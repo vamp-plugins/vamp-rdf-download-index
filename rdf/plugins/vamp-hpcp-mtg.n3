@@ -1,0 +1,157 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <vamp-hpcp-mtg#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+<>  a   vamp:PluginDescription ;
+    foaf:maker          <http://www.vamp-plugins.org/doap.rdf#template-generator> ;
+    foaf:primaryTopic   <http://vamp-plugins.org/rdf/plugins/vamp-hpcp-mtg> .
+
+:vamp-hpcp-mtg a  vamp:PluginLibrary ;
+    vamp:identifier "vamp-hpcp-mtg"  ; 
+    vamp:available_plugin plugbase:MTG-HPCP ; 
+    foaf:page <http://mtg.upf.edu/technologies/hpcp> ;
+    .
+
+plugbase:MTG-HPCP a   vamp:Plugin ;
+    dc:title              "HPCP" ;
+    vamp:name             "HPCP" ;
+    dc:description        """Return the instantaneous evolution of HPCP (Harmonic Pitch Class Profile) of a signal.""" ;
+    foaf:maker            [ foaf:name "Music Technology Group, Universitat Pompeu Fabra" ] ; # FIXME could give plugin author's URI here
+    dc:rights             """Copyright 2012 Music Technology Group, Universitat Pompeu Fabra. All Rights Reserved.
+Method described in
+  E. Gomez, Tonal description of music audio signals
+  Ph.D. dissertation, MTG
+  Universitat Pompeu Fabra, Barcelona, Spain, 2006""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "MTG-HPCP" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "1" ;
+    vamp:input_domain     vamp:FrequencyDomain ;
+
+
+    vamp:parameter   plugbase:MTG-HPCP_param_nbins ;
+    vamp:parameter   plugbase:MTG-HPCP_param_LF ;
+    vamp:parameter   plugbase:MTG-HPCP_param_HF ;
+    vamp:parameter   plugbase:MTG-HPCP_param_reff0 ;
+    vamp:parameter   plugbase:MTG-HPCP_param_peakMagThreshold ;
+    vamp:parameter   plugbase:MTG-HPCP_param_HarmonicsPerPeak ;
+    vamp:parameter   plugbase:MTG-HPCP_param_whitening ;
+    vamp:parameter   plugbase:MTG-HPCP_param_non_linear ;
+    vamp:parameter   plugbase:MTG-HPCP_param_two_bands ;
+
+    vamp:output      plugbase:MTG-HPCP_output_HPCP ;
+    .
+plugbase:MTG-HPCP_param_nbins a  vamp:QuantizedParameter ;
+    vamp:identifier     "nbins" ;
+    dc:title            "Number of bins" ;
+    dc:format           "bins" ;
+    vamp:min_value       12 ;
+    vamp:max_value       360 ;
+    vamp:unit           "bins" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   120 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_param_LF a  vamp:Parameter ;
+    vamp:identifier     "LF" ;
+    dc:title            "Lowest frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   50 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_param_HF a  vamp:Parameter ;
+    vamp:identifier     "HF" ;
+    dc:title            "Highest frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       100 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   5000 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_param_reff0 a  vamp:Parameter ;
+    vamp:identifier     "reff0" ;
+    dc:title            "Reference tuning frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       300 ;
+    vamp:max_value       600 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   440 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_param_peakMagThreshold a  vamp:Parameter ;
+    vamp:identifier     "peakMagThreshold" ;
+    dc:title            "Peak mag threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       -300 ;
+    vamp:max_value       0 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   -100 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_param_HarmonicsPerPeak a  vamp:QuantizedParameter ;
+    vamp:identifier     "HarmonicsPerPeak" ;
+    dc:title            "Harmonics per peak" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       20 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   8 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_param_whitening a  vamp:QuantizedParameter ;
+    vamp:identifier     "whitening" ;
+    dc:title            "Spectral Whitening" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_param_non_linear a  vamp:QuantizedParameter ;
+    vamp:identifier     "non_linear" ;
+    dc:title            "Non-linear" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_param_two_bands a  vamp:QuantizedParameter ;
+    vamp:identifier     "two_bands" ;
+    dc:title            "Two frequency bands" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:MTG-HPCP_output_HPCP a  vamp:DenseOutput ;
+    vamp:identifier       "HPCP" ;
+    dc:title              "HPCP" ;
+    dc:description        """HPCP values computed from the input signal"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        120 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
