@@ -1,17 +1,24 @@
 
 $(document).ready(function() {
     
+    var rdfStore = N3.Store();
+
     var parseRdf = function(data) {
 	
 	var parser = N3.Parser();
 	parser.parse(data,
 	             function (error, triple, prefixes) {
+			 if (triple) {
+			     rdfStore.addTriple(triple);
+			 }
+/*
         		 if (triple) {
 			     console.log(triple.subject, triple.predicate, triple.object, '.');
 			 }
 			 else {
 			     console.log("# That's all, folks!", prefixes)
 			 }
+*/
 		     });
     };
     
