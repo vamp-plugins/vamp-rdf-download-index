@@ -1,0 +1,4 @@
+[submodule "yeti-spark/spark"]
+	path = yeti-spark/spark
+	url = https://github.com/perwendel/spark.git
+

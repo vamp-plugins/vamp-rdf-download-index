@@ -1,0 +1,25 @@
+
+module spag;
+
+import spark: Request, Response, Route, Spark;
+
+route match callback =
+   (handler path callback =
+       (class Handler extends Route(path)
+            Object handle(Request req, Response resp)
+                routeParams = customHash \(req#params());
+                queryParams = mapIntoHash id do p: req#queryParams(p) done
+                   (map string req#queryParams()#toArray());
+                callback { routeParams, queryParams },
+        end;
+        new Handler());
+    case match of
+    Get path: 
+        h = handler path callback;
+        Spark#get(h);
+    esac);
+
+{
+    route
+}
+

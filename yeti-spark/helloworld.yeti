@@ -1,0 +1,22 @@
+
+program helloworld;
+
+{ route } = load spag;
+
+vamp = load may.vamp;
+
+pluginKeys = vamp.getKnownPluginKeys ();
+
+route (Get "/hello/:thing") do { queryParams, routeParams }: "Query params are: \(queryParams); route params are: \(routeParams)" done;
+
+route (Get "/plugin/list") do _:
+    strJoin "\n"
+       (map do pk:
+            pd = vamp.getDataForKnownPlugin pk;
+            case pd of
+            Some data:
+                "<p>\(data.name)</p>";
+            None _: "";
+            esac;
+        done pluginKeys)
+done;
