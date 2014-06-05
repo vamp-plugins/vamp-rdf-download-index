@@ -3,6 +3,8 @@ module spag;
 
 import spark: Request, Response, Route, Spark;
 
+import org.apache.commons.lang: StringEscapeUtils;
+
 route match callback =
    (handler path callback =
        (class Handler extends Route(path)
@@ -19,7 +21,11 @@ route match callback =
         Spark#get(h);
     esac);
 
+esc str =
+    StringEscapeUtils#escapeHtml(str);
+
 {
-    route
+    route,
+    esc
 }
 
