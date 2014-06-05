@@ -1,1 +1,2 @@
 yeti-spark/spark = [git]https://github.com/perwendel/spark.git
+rdf = https://code.soundsoftware.ac.uk/hg/vamp-known-plugins-rdf
