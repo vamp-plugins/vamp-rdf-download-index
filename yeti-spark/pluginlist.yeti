@@ -7,35 +7,46 @@ program pluginlist;
 { route, esc } = load spag;
 
 store = load yertle.store;
+property = load yertle.property;
 vamprdf = load may.vamp.vamprdf;
 
 pluginStore = store.newRdfStore ();
 vamprdf.loadSystemVampRdf pluginStore;
 
 pluginData = 
-    map (vamprdf.pluginDataByNode pluginStore)
-        (vamprdf.allPluginNodes pluginStore);
+    map do n:
+        data = vamprdf.pluginDataByNode pluginStore n;
+        logo = 
+            case property.nodeProperty pluginStore n "foaf:maker" of
+            Some mn:
+(eprintln "maker node = \(mn)";
+       eprintln "properties: \(pluginStore.match { s = Known mn, p = Wildcard (), o = Wildcard () })";
+                case property.iriProperty pluginStore mn "foaf:logo" of
+                IRI iri: "<img src=\"\(iri)\">";
+                None _: "(no logo)";
+                esac);
+            None _: "(no maker)";
+            esac;
+        data with { logo };
+    done (vamprdf.allPluginNodes pluginStore);
+
+(load yertle.write).writeToTurtleFile "/tmp/x.ttl" pluginStore;
 
 sortPlugins =
+   (props = map (strLower .) [ (.maker), (.library.name), (.name) ];
     sortBy do a b:
-        if strLower a.maker != strLower b.maker then
-            strLower a.maker < strLower b.maker
-        elif strLower a.library.name != strLower b.library.name then
-            strLower a.library.name < strLower b.library.name
-        elif strLower a.name != strLower b.name then
-            strLower a.name < strLower b.name
-        else false
-        fi
-    done;
-
-//!!! really need those textProperty, nodeProperty etc in the main yertle code so we can query for e.g. plugin node -> maker node -> logo uri
+        case (find do prop: prop a != prop b done props) of
+        prop::_: prop a < prop b;
+        _: false;
+        esac
+    done);
 
 route (Get "/plugin/list") do _:
     "<table>" ^
     strJoin "\n"
        (map do pd:
             desc = strReplace "\n" "<br>" (esc pd.description);
-            "<tr><td>\(esc pd.maker)</td><td>\(esc pd.library.name)</td><td><b>\(esc pd.name)</b></td></tr>" ^
+            "<tr><td>\(pd.logo) \(esc pd.maker)</td><td>\(esc pd.library.name)</td><td><b>\(esc pd.name)</b></td></tr>" ^
             "<tr><td></td><td></td><td>\(desc)</td></tr>";
         done (sortPlugins pluginData)) ^
     "</table>"
