@@ -14,19 +14,24 @@ pluginStore = store.newRdfStore ();
 vamprdf.loadSystemVampRdf pluginStore;
 
 pluginData = 
-    map do n:
-        data = vamprdf.pluginDataByNode pluginStore n;
-        logo = 
-            case property.nodeProperty pluginStore n "foaf:maker" of
-            Some mn:
-(eprintln "maker node = \(mn)";
-       eprintln "properties: \(pluginStore.match { s = Known mn, p = Wildcard (), o = Wildcard () })";
-                case property.iriProperty pluginStore mn "foaf:logo" of
-                IRI iri: "<img src=\"\(iri)\">";
-                None _: "(no logo)";
-                esac);
-            None _: "(no maker)";
-            esac;
+    map do plugnode:
+        data = vamprdf.pluginDataByNode pluginStore plugnode;
+        logo =
+           (libnodes = map (.s)
+               (pluginStore.match { 
+                    s = Wildcard (),
+                    p = Known (pluginStore.expand "vamp:available_plugin"),
+                    o = Known plugnode
+                });
+            logonodes = concatMap do libnode:
+                concatMap do makernode:
+                    property.irisProperty pluginStore makernode "foaf:logo"
+                done (property.nodesProperty pluginStore libnode "foaf:maker")
+            done libnodes;
+            case logonodes of
+            IRI liri::_: "<img src=\"\(liri)\">";
+            _: "";
+            esac);
         data with { logo };
     done (vamprdf.allPluginNodes pluginStore);
 
