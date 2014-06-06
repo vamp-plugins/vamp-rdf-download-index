@@ -13,29 +13,70 @@ vamprdf = load may.vamp.vamprdf;
 pluginStore = store.newRdfStore ();
 vamprdf.loadSystemVampRdf pluginStore;
 
+platformTag { headers, queryParams } =
+    if "platform" in queryParams then queryParams["platform"]
+    else
+        ua = "User-Agent";
+        if ua in headers then
+            if headers[ua] =~ "Linux" then
+                if headers[ua] =~ "i686" then "linux32"
+                else "linux64"
+                fi;
+            elif headers[ua] =~ "Windows" then "win32"
+            elif headers[ua] =~ "Macintosh" then "osx"
+            else "unknown"
+            fi
+        else "unknown"
+        fi
+    fi;
+
+platformStatus tag pluginData =
+    if not empty? (find (== tag) pluginData.platforms) then Available ()
+    elif empty? pluginData.platforms or pluginData.source then MaybeAvailable ()
+    else Unavailable ()
+    fi;
+
 pluginData = 
     map do plugnode:
         data = vamprdf.pluginDataByNode pluginStore plugnode;
-        logo =
-           (libnodes = map (.s)
-               (pluginStore.match { 
-                    s = Wildcard (),
-                    p = Known (pluginStore.expand "vamp:available_plugin"),
-                    o = Known plugnode
-                });
-            logonodes = concatMap do libnode:
+        libnodes = map (.s)
+           (pluginStore.match { 
+                s = Wildcard (),
+                p = Known (pluginStore.expand "vamp:available_plugin"),
+                o = Known plugnode
+            });
+        makerIri name =
+           (nodes = concatMap do node:
                 concatMap do makernode:
-                    property.irisProperty pluginStore makernode "foaf:logo"
-                done (property.nodesProperty pluginStore libnode "foaf:maker")
+                    property.irisProperty pluginStore makernode name
+                done (property.nodesProperty pluginStore node "foaf:maker")
             done libnodes;
-            case logonodes of
-            IRI liri::_: "<img src=\"\(liri)\">";
+            case nodes of
+            IRI i::_: i;
             _: "";
             esac);
-        data with { logo };
+        logo =
+           (liri = makerIri "foaf:logo";
+            if liri == "" then ""
+            else "<img src=\"\(liri)\">";
+            fi);
+        downloadURL = case 
+           (concatMap do node:
+                property.irisProperty pluginStore node "doap:download-page"
+            done libnodes) of
+            IRI i::_: i;
+            _: "";
+            esac;
+        platforms = concatMap do libnode:
+                property.textsProperty pluginStore libnode "vamp:has_binary"
+            done libnodes;
+        source = any id
+           (map do libnode:
+                strLower (property.textProperty pluginStore 
+                          libnode "vamp:has_source") == "true";
+            done libnodes);
+        data with { logo, platforms, source, downloadURL };
     done (vamprdf.allPluginNodes pluginStore);
-
-(load yertle.write).writeToTurtleFile "/tmp/x.ttl" pluginStore;
 
 sortPlugins =
    (props = map (strLower .) [ (.maker), (.library.name), (.name) ];
@@ -46,13 +87,17 @@ sortPlugins =
         esac
     done);
 
-route (Get "/plugin/list") do _:
+route (Get "/plugin/list") do { headers, queryParams }:
+    ptag = platformTag { headers, queryParams };
+    eprintln "platform = \(ptag)";
     "<table>" ^
     strJoin "\n"
        (map do pd:
             desc = strReplace "\n" "<br>" (esc pd.description);
-            "<tr><td>\(pd.logo) \(esc pd.maker)</td><td>\(esc pd.library.name)</td><td><b>\(esc pd.name)</b></td></tr>" ^
-            "<tr><td></td><td></td><td>\(desc)</td></tr>";
+            eprintln "download url = \(pd.downloadURL)";
+            eprintln "info url = \(pd.infoURL)";
+            "<tr><td>\(platformStatus ptag pd)</td><td>\(pd.logo) \(esc pd.maker)</td><td>\(esc pd.library.name)</td><td><b>\(esc pd.name)</b></td></tr>" ^
+            "<tr><td></td><td></td><td></td><td>\(desc)</td></tr>";
         done (sortPlugins pluginData)) ^
     "</table>"
 done;
