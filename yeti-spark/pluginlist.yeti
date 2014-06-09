@@ -8,6 +8,7 @@ program pluginlist;
 
 store = load yertle.store;
 property = load yertle.property;
+vamp = load may.vamp;
 vamprdf = load may.vamp.vamprdf;
 
 pluginStore = store.newRdfStore ();
@@ -31,7 +32,8 @@ platformTag { headers, queryParams } =
     fi;
 
 platformStatus tag pluginData =
-    if not empty? (find (== tag) pluginData.platforms) then Available ()
+    if tag == "unknown" then MaybeAvailable ()
+    elif not empty? (find (== tag) pluginData.platforms) then Available ()
     elif empty? pluginData.platforms or pluginData.source then MaybeAvailable ()
     else Unavailable ()
     fi;
@@ -67,6 +69,13 @@ pluginData =
             IRI i::_: i;
             _: "";
             esac;
+        libdesc = case 
+           (map do libnode:
+                property.textProperty pluginStore libnode "dc:description"
+            done libnodes) of
+            first::_: first;
+            _: "";
+            esac;
         platforms = concatMap do libnode:
                 property.textsProperty pluginStore libnode "vamp:has_binary"
             done libnodes;
@@ -75,8 +84,64 @@ pluginData =
                 strLower (property.textProperty pluginStore 
                           libnode "vamp:has_source") == "true";
             done libnodes);
-        data with { logo, platforms, source, downloadURL };
+        category = 
+            if not empty? data.category then data.category else
+                vamp.categoryOf data.pluginKey
+            fi;
+        data with { 
+            logo, platforms, source, downloadURL, category,
+            library = data.library with { description = libdesc }
+        };
     done (vamprdf.allPluginNodes pluginStore);
+
+nonKeywords = mapIntoHash id id [
+    "a", "and", "the", "an", "of", "plugin"
+];
+
+keywords search =
+    concatMap do w:
+        if w in nonKeywords or strLength w < 2 then [] else [w] fi
+        done (strSplit "\\s+" search);
+
+textSearchScore search =
+   (search = strLower search;
+    needles = keywords search;
+    do haystack:
+        haystack = strLower haystack;
+        if strIndexOf haystack search 0 >= 0 then 
+            2 * (if needles == [] then 1 else length needles fi)
+        else
+            fold do acc needle: 
+                if strIndexOf haystack needle 0 >= 0 then acc + 1 else acc fi
+                done 0 needles
+        fi
+    done);
+
+pluginSearchScore search plugin =
+   (scorer = textSearchScore search;
+    3 * scorer plugin.name +
+    2 * scorer plugin.library.name +
+    scorer plugin.description +
+    scorer plugin.library.description +
+    scorer plugin.library.soname +
+    scorer plugin.maker +
+    fold do acc cat: acc + scorer cat done 0 plugin.category);
+
+filterPlugins search ptag plugins =
+   (scorer = pluginSearchScore search;
+    results = concatMap do p:
+        score = scorer p;
+        if score > 0 then
+            case platformStatus ptag p of
+            Available (): [ { score = score + 100, p } ];
+            MaybeAvailable (): [ { score = score + 50, p } ];
+            Unavailable (): [ { score, p } ];
+            esac
+        else
+            []
+        fi
+        done plugins;
+    map (.p) (sortBy do a b: a.score > b.score done results));
 
 sortPlugins =
    (props = map (strLower .) [ (.maker), (.library.name), (.name) ];
@@ -87,17 +152,51 @@ sortPlugins =
         esac
     done);
 
+highlighted search text =
+   (hlaux search text tlower =
+       (ix = strIndexOf tlower search 0;
+        if ix >= 0 then
+            slen = strLength search;
+            tlen = strLength text;
+            strLeft text ix ^
+                "<span class=\"highlight\" style=\"color:red\">" ^ 
+                strSlice text ix (ix + slen) ^
+                "</span>" ^ 
+                hlaux search 
+                   (strSlice text (ix + slen) tlen)
+                   (strSlice tlower (ix + slen) tlen);
+        else
+            text
+        fi);
+    if search == "" then text
+    else 
+        h = hlaux (strLower search) text (strLower text);
+        if h != text then h
+        else fold do acc key:
+            hlaux (strLower key) acc (strLower acc)
+            done text (keywords search)
+        fi
+    fi);
+
 route (Get "/plugin/list") do { headers, queryParams }:
     ptag = platformTag { headers, queryParams };
     eprintln "platform = \(ptag)";
+    search = if "search" in queryParams then queryParams["search"] else "" fi;
+    plugs = 
+        if search != "" then
+            filterPlugins search ptag pluginData
+        else
+            sortPlugins pluginData
+        fi;
     "<table>" ^
     strJoin "\n"
        (map do pd:
-            desc = strReplace "\n" "<br>" (esc pd.description);
             eprintln "download url = \(pd.downloadURL)";
             eprintln "info url = \(pd.infoURL)";
-            "<tr><td>\(platformStatus ptag pd)</td><td>\(pd.logo) \(esc pd.maker)</td><td>\(esc pd.library.name)</td><td><b>\(esc pd.name)</b></td></tr>" ^
+            proc = (highlighted search) . esc;
+            desc = strReplace "\n" "<br>" (proc pd.description);
+            "<tr><td>\(platformStatus ptag pd)</td><td>\(pd.logo) \(proc pd.maker)</td><td>\(proc pd.library.name)</td><td><b>\(proc pd.name)</b></td></tr>" ^
             "<tr><td></td><td></td><td></td><td>\(desc)</td></tr>";
-        done (sortPlugins pluginData)) ^
+        done plugs) ^
     "</table>"
 done;

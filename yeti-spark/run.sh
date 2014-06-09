@@ -15,7 +15,7 @@ CLASSPATH=`find ~/.m2 "$MAY_DIR" -name \*.jar -print0 | sed 's/\x00/:/g'`:"$YETI
 
 "$MAY_DIR/bin/yc" -d target/classes -cp "spark/target/classes:$CLASSPATH" ./pluginlist.yeti || exit 1
 
-platform_tag=linux32
+platform_tag=linux64
 
-VAMP_PATH=$mydir/../rdf/plugins LD_LIBRARY_PATH="$MAY_DIR/ext/native/$platform_tag:$LD_LIBRARY_PATH" java -cp target/classes:spark/target/classes:"$CLASSPATH" pluginlist
+VAMP_PATH=$mydir/../rdf/plugins:$HOME/vamp LD_LIBRARY_PATH="$MAY_DIR/ext/native/$platform_tag:$LD_LIBRARY_PATH" java -cp target/classes:spark/target/classes:"$CLASSPATH" pluginlist
 
