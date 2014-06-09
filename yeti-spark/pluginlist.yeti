@@ -57,11 +57,7 @@ pluginData =
             IRI i::_: i;
             _: "";
             esac);
-        logo =
-           (liri = makerIri "foaf:logo";
-            if liri == "" then ""
-            else "<img src=\"\(liri)\">";
-            fi);
+        logoURL = makerIri "foaf:logo";
         downloadURL = case 
            (concatMap do node:
                 property.irisProperty pluginStore node "doap:download-page"
@@ -89,7 +85,7 @@ pluginData =
                 vamp.categoryOf data.pluginKey
             fi;
         data with { 
-            logo, platforms, source, downloadURL, category,
+            logoURL, platforms, source, downloadURL, category,
             library = data.library with { description = libdesc }
         };
     done (vamprdf.allPluginNodes pluginStore);
@@ -198,7 +194,8 @@ route (Get "/plugin/list") do { headers, queryParams }:
             eprintln "info url = \(pd.infoURL)";
             proc = (highlighted search) . esc;
             desc = strReplace "\n" "<br>" (proc pd.description);
-            "<tr><td>\(platformStatus ptag pd)</td><td>\(pd.logo) \(proc pd.maker)</td><td>\(proc pd.library.name)</td><td><b>\(proc pd.name)</b></td></tr>" ^
+            logo = if pd.logoURL == "" then "" else "<img src=\"\(pd.logoURL)\">" fi;
+            "<tr><td>\(platformStatus ptag pd)</td><td>\(logo) \(proc pd.maker)</td><td>\(proc pd.library.name)</td><td><b>\(proc pd.name)</b></td></tr>" ^
             "<tr><td></td><td></td><td></td><td>\(desc)</td></tr>";
         done plugs) ^
     "</table>"
