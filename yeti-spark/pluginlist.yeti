@@ -128,20 +128,23 @@ pluginSearchScore search plugin =
     fold do acc cat: acc + scorer cat done 0 plugin.category);
 
 filterPlugins search ptag plugins =
-   (scorer = pluginSearchScore search;
-    results = concatMap do p:
-        score = scorer p;
-        if score > 0 then
-            case platformStatus ptag p of
-            Available (): [ { score = score + 100, p } ];
-            MaybeAvailable (): [ { score = score + 50, p } ];
-            Unavailable (): [ { score, p } ];
-            esac
-        else
-            []
-        fi
-        done plugins;
-    map (.p) (sortBy do a b: a.score > b.score done results));
+    if strLength search < 2 then []
+    else
+        scorer = pluginSearchScore search;
+        results = concatMap do p:
+            score = scorer p;
+            if score > 0 then
+                case platformStatus ptag p of
+                Available (): [ { score = score + 100, p } ];
+                MaybeAvailable (): [ { score = score + 50, p } ];
+                Unavailable (): [ { score, p } ];
+                esac
+            else
+                []
+            fi
+            done plugins;
+        map (.p) (sortBy do a b: a.score > b.score done results)
+    fi;
 
 sortPlugins =
    (props = map (strLower .) [ (.maker), (.library.name), (.name) ];
