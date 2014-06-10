@@ -33,62 +33,34 @@ platformTag { headers, queryParams } =
 
 platformStatus tag pluginData =
     if tag == "unknown" then MaybeAvailable ()
-    elif not empty? (find (== tag) pluginData.platforms) then Available ()
-    elif empty? pluginData.platforms or pluginData.source then MaybeAvailable ()
+    elif not empty? (find (== tag) pluginData.library.platforms) then Available ()
+    elif empty? pluginData.library.platforms or pluginData.library.source then MaybeAvailable ()
     else Unavailable ()
     fi;
 
 pluginData = 
-    map do plugnode:
-        data = vamprdf.pluginDataByNode pluginStore plugnode;
-        libnodes = map (.s)
-           (pluginStore.match { 
-                s = Wildcard (),
-                p = Known (pluginStore.expand "vamp:available_plugin"),
-                o = Known plugnode
-            });
-        makerIri name =
-           (nodes = concatMap do node:
-                concatMap do makernode:
-                    property.irisProperty pluginStore makernode name
-                done (property.nodesProperty pluginStore node "foaf:maker")
-            done libnodes;
-            case nodes of
-            IRI i::_: i;
-            _: "";
-            esac);
-        logoURL = makerIri "foaf:logo";
-        downloadURL = case 
-           (concatMap do node:
-                property.irisProperty pluginStore node "doap:download-page"
-            done libnodes) of
-            IRI i::_: i;
-            _: "";
-            esac;
-        libdesc = case 
-           (map do libnode:
-                property.textProperty pluginStore libnode "dc:description"
-            done libnodes) of
-            first::_: first;
-            _: "";
-            esac;
-        platforms = concatMap do libnode:
-                property.textsProperty pluginStore libnode "vamp:has_binary"
-            done libnodes;
-        source = any id
-           (map do libnode:
-                strLower (property.textProperty pluginStore 
-                          libnode "vamp:has_source") == "true";
-            done libnodes);
-        category = 
-            if not empty? data.category then data.category else
-                vamp.categoryOf data.pluginKey
-            fi;
-        data with { 
-            logoURL, platforms, source, downloadURL, category,
-            library = data.library with { description = libdesc }
-        };
-    done (vamprdf.allPluginNodes pluginStore);
+    map (vamprdf.pluginDataByNode pluginStore)
+       (vamprdf.allPluginNodes pluginStore);
+
+warnMissing pdata =
+   (warn prop =
+        eprintln "** NOTE: \(pdata.pluginKey): Lacks \(prop)";
+    libwarn prop =
+        eprintln "** NOTE: \(pdata.pluginKey): Library node lacks \(prop)";
+    if pdata.name == "" then warn "dc:title" fi;
+    if pdata.description == "" then warn "dc:description" fi;
+    if pdata.maker == "" then warn "foaf:maker/foaf:name" fi;
+    if pdata.copyright == "" then warn "dc:rights" fi;
+    if pdata.version == "" then warn "owl:versionInfo" fi;
+    if pdata.category == [] then warn "vamp:category" fi;
+    if pdata.infoURL == "" then warn "foaf:page" fi;
+    if pdata.makerLogoURL == "" then libwarn "foaf:maker/foaf:logo" fi;
+    if pdata.downloadURL == "" then libwarn "doap:download-page" fi;
+    if pdata.library.name == "" then libwarn "dc:title" fi;
+    if pdata.library.description == "" then libwarn "dc:description" fi;
+    );
+
+for pluginData warnMissing;
 
 nonKeywords = mapIntoHash id id [
     "a", "and", "the", "an", "of", "plugin"
@@ -158,7 +130,7 @@ highlighted search text =
             slen = strLength search;
             tlen = strLength text;
             strLeft text ix ^
-                "<span class=\"highlight\" style=\"color:red\">" ^ 
+                "<span class=\"highlight\">" ^ 
                 strSlice text ix (ix + slen) ^
                 "</span>" ^ 
                 hlaux search 
@@ -192,11 +164,13 @@ route (Get "/plugin/list") do { headers, queryParams }:
        (map do pd:
             eprintln "download url = \(pd.downloadURL)";
             eprintln "info url = \(pd.infoURL)";
+            eprintln "library name = \(pd.library.name)";
             proc = (highlighted search) . esc;
             desc = strReplace "\n" "<br>" (proc pd.description);
-            logo = if pd.logoURL == "" then "" else "<img src=\"\(pd.logoURL)\">" fi;
+            logo = if pd.makerLogoURL == "" then "" else "<img src=\"\(pd.makerLogoURL)\">" fi;
             "<tr><td>\(platformStatus ptag pd)</td><td>\(logo) \(proc pd.maker)</td><td>\(proc pd.library.name)</td><td><b>\(proc pd.name)</b></td></tr>" ^
-            "<tr><td></td><td></td><td></td><td>\(desc)</td></tr>";
+            "<tr><td></td><td></td><td></td><td>\(desc)</td></tr>" ^
+            "<tr><td></td><td></td><td></td><td><i>\(proc (strJoin ' > ' pd.category))</i></td></tr>"
         done plugs) ^
     "</table>"
 done;
