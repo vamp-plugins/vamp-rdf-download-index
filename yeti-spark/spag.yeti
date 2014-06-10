@@ -26,8 +26,12 @@ route match callback =
 esc str =
     StringEscapeUtils#escapeHtml(str);
 
+link url text =
+    "<a href=\"\(url)\">\(text)</a>";
+
 {
     route,
-    esc
+    esc,
+    link
 }
 

@@ -4,7 +4,7 @@
 
 program pluginlist;
 
-{ route, esc } = load spag;
+{ route, esc, link } = load spag;
 
 store = load yertle.store;
 property = load yertle.property;
@@ -55,9 +55,9 @@ warnMissing pdata =
     if pdata.category == [] then warn "vamp:category" fi;
     if pdata.infoURL == "" then warn "foaf:page" fi;
     if pdata.makerLogoURL == "" then libwarn "foaf:maker/foaf:logo" fi;
-    if pdata.downloadURL == "" then libwarn "doap:download-page" fi;
     if pdata.library.name == "" then libwarn "dc:title" fi;
     if pdata.library.description == "" then libwarn "dc:description" fi;
+    if pdata.library.downloadURL == "" then libwarn "doap:download-page" fi;
     );
 
 for pluginData warnMissing;
@@ -123,6 +123,18 @@ sortPlugins =
         esac
     done);
 
+iriIdMap = [:];
+var iriIdNext = 0;
+
+divIdFor iri =
+   synchronized iriIdMap do:
+       if not iri in iriIdMap then
+           iriIdMap[id] := "piri\(iriIdNext)";
+           iriIdNext := iriIdNext + 1;
+       fi;
+       iriIdMap[iri];
+   done;
+
 highlighted search text =
    (hlaux search text tlower =
        (ix = strIndexOf tlower search 0;
@@ -162,14 +174,22 @@ route (Get "/plugin/list") do { headers, queryParams }:
     "<table>" ^
     strJoin "\n"
        (map do pd:
-            eprintln "download url = \(pd.downloadURL)";
-            eprintln "info url = \(pd.infoURL)";
-            eprintln "library name = \(pd.library.name)";
             proc = (highlighted search) . esc;
             desc = strReplace "\n" "<br>" (proc pd.description);
             logo = if pd.makerLogoURL == "" then "" else "<img src=\"\(pd.makerLogoURL)\">" fi;
+            downloadLink = 
+                if pd.library.downloadURL != "" then
+                    if pd.library.infoURL != "" then
+                        link pd.library.infoURL "More info" ^ " "
+                    else ""
+                    fi ^
+                        link pd.library.downloadURL "Download"
+                elif pd.library.infoURL != "" then
+                    link pd.library.infoURL "More info"
+                else ""
+                fi;
             "<tr><td>\(platformStatus ptag pd)</td><td>\(logo) \(proc pd.maker)</td><td>\(proc pd.library.name)</td><td><b>\(proc pd.name)</b></td></tr>" ^
-            "<tr><td></td><td></td><td></td><td>\(desc)</td></tr>" ^
+            "<tr><td></td><td>\(downloadLink)</td><td></td><td>\(desc)</td></tr>" ^
             "<tr><td></td><td></td><td></td><td><i>\(proc (strJoin ' > ' pd.category))</i></td></tr>"
         done plugs) ^
     "</table>"
