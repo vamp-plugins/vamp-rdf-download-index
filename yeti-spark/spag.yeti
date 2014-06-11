@@ -29,22 +29,26 @@ esc str =
 link url content =
     "<a href=\"\(url)\">\(content)</a>";
 
-divc clas content =
-    "<div class=\"\(clas)\">\(content)</div>";
+eltid e clas id content =
+   (idbit = if id == "" then "" else " id=\"\(id)\"" fi;
+    "<\(e) class=\"\(clas)\"\(idbit)>\(content)</\(e)>");
 
-divid clas ident content =
-    "<div class=\"\(clas)\" id=\"\(ident)\">\(content)</div>";
+elt e clas content = eltid e clas "" content;
 
-span clas content =
-    "<span class=\"\(clas)\">\(content)</span>";
+divc = elt "div";
 
-spanid clas ident content =
-    "<span class=\"\(clas)\" id=\"\(ident)\">\(content)</span>";
+divid = eltid "div";
+
+span = elt "span";
+
+spanid = eltid "span";
 
 {
     route,
     esc,
     link,
+    elt,
+    eltid,
     divc,
     divid,
     span,

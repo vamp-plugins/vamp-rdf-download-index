@@ -4,7 +4,7 @@
 
 program pluginlist;
 
-{ route, esc, link, divc, divid, span, spanid } = load spag;
+{ route, esc, link, divc, divid, elt, span, spanid } = load spag;
 
 store = load yertle.store;
 property = load yertle.property;
@@ -186,7 +186,8 @@ renderLibraryPlugins plugins =
             divc "library-links" first.libraryLinks) ^
         "\n" ^
         divid "plugins" "plug-\(i)"
-           (strJoin "\n"
+           ("<ul><li>" ^
+            strJoin "</li><li>"
                (map do p:
                     divc "plugin-name" p.name ^
                     divc "plugin-category" p.category ^
@@ -194,7 +195,8 @@ renderLibraryPlugins plugins =
                     if p.pluginLinks != "" 
                     then divc "plugin-links" p.pluginLinks
                     else "" fi
-                done plugins))
+                done plugins) ^
+            "</li></ul>")
         );
     _: "";
     esac;
@@ -222,7 +224,7 @@ route (Get "/plugin/list") do { headers, queryParams }:
         fi;
     fragments = map do pd:
         {
-            name = span "plugin-name" (processed pd.name),
+            name = elt "b" "plugin-name" (processed pd.name),
             description = span "plugin-description"
                (strReplace "\n" "<br>" (processed pd.description)),
             logo =
@@ -250,14 +252,14 @@ route (Get "/plugin/list") do { headers, queryParams }:
                 else ""
                 fi,
             libraryName =
-                span "library-name"
+                elt "b" "library-name"
                    (processed
                         if pd.library.name == "" then pd.library.soname
                         else pd.library.name
                         fi),
             libraryDescription = 
                 span "library-description" (processed pd.library.description),
-            makerName = span "maker-name" (processed pd.maker),
+            makerName = elt "i" "maker-name" (processed pd.maker),
             availability = 
                 if pname == "" then "" 
                 else 
@@ -270,14 +272,16 @@ route (Get "/plugin/list") do { headers, queryParams }:
                         span "availability unavailable" "Not available for \(pname)";
                     esac;
                 fi,
-            category = span "category" (processed (strJoin ' > ' pd.category)),
+            category = elt "i" "category" (processed (strJoin ' > ' pd.category)),
             data = pd,
         }
     done plugs;
 
+    "<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"css/main.css\"/></head><body>" ^
     if search != "" then
         renderSearchResults fragments
     else
         renderPluginList fragments
-    fi;
+    fi
+    ^ "</body></html>";
 done;
