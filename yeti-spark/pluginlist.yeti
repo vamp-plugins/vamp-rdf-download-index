@@ -277,11 +277,16 @@ route (Get "/plugin/list") do { headers, queryParams }:
         }
     done plugs;
 
-    "<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"css/main.css\"/></head><body>" ^
+    "<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"/css/main.css\"/></head><body><div class=\"pluginlist\">" ^
     if search != "" then
         renderSearchResults fragments
     else
         renderPluginList fragments
     fi
-    ^ "</body></html>";
+    ^ "</div></body></html>";
+done;
+
+route (Get "/css/main.css") do _:
+    readFile "css/main.css" "UTF-8"
+        do h: strJoin "\n" (h.lines ()) done;
 done;

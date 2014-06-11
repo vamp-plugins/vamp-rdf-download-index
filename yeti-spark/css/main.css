@@ -1,0 +1,14 @@
+
+.library {
+    float: left;
+    clear: both;
+}
+
+.plugin {
+    float: right;
+    clear: right;
+}
+
+li {
+    list-style-type: none;
+}
