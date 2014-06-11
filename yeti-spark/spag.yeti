@@ -26,12 +26,28 @@ route match callback =
 esc str =
     StringEscapeUtils#escapeHtml(str);
 
-link url text =
-    "<a href=\"\(url)\">\(text)</a>";
+link url content =
+    "<a href=\"\(url)\">\(content)</a>";
+
+divc clas content =
+    "<div class=\"\(clas)\">\(content)</div>";
+
+divid clas ident content =
+    "<div class=\"\(clas)\" id=\"\(ident)\">\(content)</div>";
+
+span clas content =
+    "<span class=\"\(clas)\">\(content)</span>";
+
+spanid clas ident content =
+    "<span class=\"\(clas)\" id=\"\(ident)\">\(content)</span>";
 
 {
     route,
     esc,
-    link
+    link,
+    divc,
+    divid,
+    span,
+    spanid,
 }
 

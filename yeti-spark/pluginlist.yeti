@@ -4,7 +4,7 @@
 
 program pluginlist;
 
-{ route, esc, link } = load spag;
+{ route, esc, link, divc, divid, span, spanid } = load spag;
 
 store = load yertle.store;
 property = load yertle.property;
@@ -29,6 +29,14 @@ platformTag { headers, queryParams } =
             fi
         else "unknown"
         fi
+    fi;
+
+platformName ptag =
+    if ptag == "linux32" then "32-bit Linux"
+    elif ptag == "linux64" then "64-bit Linux"
+    elif ptag == "win32" then "Windows"
+    elif ptag == "osx" then "Mac OS/X"
+    else ""
     fi;
 
 platformStatus tag pluginData =
@@ -161,24 +169,41 @@ highlighted search text =
         fi
     fi);
 
+renderSearchResult fragment =
+    fragment.logo ^ fragment.libraryName ^ fragment.name;
+
+renderSearchResults fragments =
+    "<ul>\n" ^
+    "<li>" ^
+    strJoin "</li>\n<li>" (map renderSearchResult fragments) ^
+    "</li>\n" ^
+    "</ul>\n";
+
+renderPluginList = renderSearchResults; //!!!
+
 route (Get "/plugin/list") do { headers, queryParams }:
     ptag = platformTag { headers, queryParams };
+    pname = platformName ptag;
     eprintln "platform = \(ptag)";
     search = if "search" in queryParams then queryParams["search"] else "" fi;
+    processed = (highlighted search) . esc;
     plugs = 
         if search != "" then
             filterPlugins search ptag pluginData
         else
             sortPlugins pluginData
         fi;
-    "<table>" ^
-    strJoin "\n"
-       (map do pd:
-            proc = (highlighted search) . esc;
-            desc = strReplace "\n" "<br>" (proc pd.description);
-            logo = if pd.makerLogoURL == "" then "" else "<img src=\"\(pd.makerLogoURL)\">" fi;
-            downloadLink = 
-                if pd.library.downloadURL != "" then
+    fragments = map do pd:
+        {
+            name = divc "plugin-name" (processed pd.name),
+            description = divc "plugin-description"
+               (strReplace "\n" "<br>" (processed pd.description)),
+            logo =
+                if pd.makerLogoURL == "" then "" 
+                else "<img class=\"maker-logo\" src=\"\(pd.makerLogoURL)\">" 
+                fi,
+            downloadLink = divc "links"
+               (if pd.library.downloadURL != "" then
                     if pd.library.infoURL != "" then
                         link pd.library.infoURL "More info" ^ " "
                     else ""
@@ -187,10 +212,30 @@ route (Get "/plugin/list") do { headers, queryParams }:
                 elif pd.library.infoURL != "" then
                     link pd.library.infoURL "More info"
                 else ""
-                fi;
-            "<tr><td>\(platformStatus ptag pd)</td><td>\(logo) \(proc pd.maker)</td><td>\(proc pd.library.name)</td><td><b>\(proc pd.name)</b></td></tr>" ^
-            "<tr><td></td><td>\(downloadLink)</td><td></td><td>\(desc)</td></tr>" ^
-            "<tr><td></td><td></td><td></td><td><i>\(proc (strJoin ' > ' pd.category))</i></td></tr>"
-        done plugs) ^
-    "</table>"
+                fi),
+            libraryName = divc "library-name" (processed pd.library.name),
+            libraryDescription = divc "library-description" (processed pd.library.description),
+            makerName = divc "maker-name" (processed pd.maker),
+            availability = 
+                if pname == "" then "" 
+                else 
+                    case platformStatus ptag pd of
+                    Available ():
+                        divc "availability available" "Available for \(pname)";
+                    MaybeAvailable ():
+                        divc "availability maybe-available" "Availability for \(pname) uncertain";
+                    Unavailable ():
+                        divc "availability unavailable" "Not available for \(pname)";
+                    esac;
+                fi,
+            category = divc "category" (processed (strJoin ' > ' pd.category)),
+            data = pd,
+        }
+    done plugs;
+
+    if search != "" then
+        renderSearchResults fragments
+    else
+        renderPluginList fragments
+    fi;
 done;
