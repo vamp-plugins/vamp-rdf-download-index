@@ -137,7 +137,7 @@ var iriIdNext = 0;
 divIdFor iri =
    synchronized iriIdMap do:
        if not iri in iriIdMap then
-           iriIdMap[id] := "piri\(iriIdNext)";
+           iriIdMap[iri] := "piri\(iriIdNext)";
            iriIdNext := iriIdNext + 1;
        fi;
        iriIdMap[iri];
@@ -169,13 +169,40 @@ highlighted search text =
         fi
     fi);
 
+groupByLibrary = groupBy do a b: if a.libraryName == "" or b.libraryName == "" then false else a.libraryName == b.libraryName fi done;
+
 renderSearchResult fragment =
     fragment.logo ^ fragment.libraryName ^ fragment.name;
+
+renderLibraryPlugins plugins =
+    case plugins of
+    first::rest:
+       (i = divIdFor first.data.pluginNode;
+        divid "library" "lib-\(i)"
+           (divc "library-logo-name" (first.logo ^ first.libraryName) ^
+            divc "library-description" first.libraryDescription ^
+            divc "library-maker" first.makerName ^
+            divc "library-availability" first.availability ^
+            divc "library-links" first.libraryLinks) ^
+        "\n" ^
+        divid "plugins" "plug-\(i)"
+           (strJoin "\n"
+               (map do p:
+                    divc "plugin-name" p.name ^
+                    divc "plugin-category" p.category ^
+                    divc "plugin-description" p.description ^
+                    if p.pluginLinks != "" 
+                    then divc "plugin-links" p.pluginLinks
+                    else "" fi
+                done plugins))
+        );
+    _: "";
+    esac;
 
 renderSearchResults fragments =
     "<ul>\n" ^
     "<li>" ^
-    strJoin "</li>\n<li>" (map renderSearchResult fragments) ^
+    strJoin "</li>\n<li>" (map renderLibraryPlugins (groupByLibrary fragments)) ^
     "</li>\n" ^
     "</ul>\n";
 
@@ -200,9 +227,13 @@ route (Get "/plugin/list") do { headers, queryParams }:
                (strReplace "\n" "<br>" (processed pd.description)),
             logo =
                 if pd.makerLogoURL == "" then "" 
-                else "<img class=\"maker-logo\" src=\"\(pd.makerLogoURL)\">" 
+                else
+                    i = "<img class=\"maker-logo\" src=\"\(pd.makerLogoURL)\">";
+                    if pd.makerInfoURL != "" then link pd.makerInfoURL i
+                    else i
+                    fi
                 fi,
-            downloadLink = span "links"
+            libraryLinks = span "links"
                (if pd.library.downloadURL != "" then
                     if pd.library.infoURL != "" then
                         link pd.library.infoURL "More info" ^ " "
@@ -213,8 +244,19 @@ route (Get "/plugin/list") do { headers, queryParams }:
                     link pd.library.infoURL "More info"
                 else ""
                 fi),
-            libraryName = span "library-name" (processed pd.library.name),
-            libraryDescription = span "library-description" (processed pd.library.description),
+            pluginLinks = 
+                if pd.infoURL != "" then
+                    span "links" (link pd.infoURL "Documentation")
+                else ""
+                fi,
+            libraryName =
+                span "library-name"
+                   (processed
+                        if pd.library.name == "" then pd.library.soname
+                        else pd.library.name
+                        fi),
+            libraryDescription = 
+                span "library-description" (processed pd.library.description),
             makerName = span "maker-name" (processed pd.maker),
             availability = 
                 if pname == "" then "" 
@@ -223,7 +265,7 @@ route (Get "/plugin/list") do { headers, queryParams }:
                     Available ():
                         span "availability available" "Available for \(pname)";
                     MaybeAvailable ():
-                        span "availability maybe-available" "Availability for \(pname) uncertain";
+                        span "availability maybe-available" "Uncertain availability for \(pname)";
                     Unavailable ():
                         span "availability unavailable" "Not available for \(pname)";
                     esac;
