@@ -195,14 +195,14 @@ route (Get "/plugin/list") do { headers, queryParams }:
         fi;
     fragments = map do pd:
         {
-            name = divc "plugin-name" (processed pd.name),
-            description = divc "plugin-description"
+            name = span "plugin-name" (processed pd.name),
+            description = span "plugin-description"
                (strReplace "\n" "<br>" (processed pd.description)),
             logo =
                 if pd.makerLogoURL == "" then "" 
                 else "<img class=\"maker-logo\" src=\"\(pd.makerLogoURL)\">" 
                 fi,
-            downloadLink = divc "links"
+            downloadLink = span "links"
                (if pd.library.downloadURL != "" then
                     if pd.library.infoURL != "" then
                         link pd.library.infoURL "More info" ^ " "
@@ -213,22 +213,22 @@ route (Get "/plugin/list") do { headers, queryParams }:
                     link pd.library.infoURL "More info"
                 else ""
                 fi),
-            libraryName = divc "library-name" (processed pd.library.name),
-            libraryDescription = divc "library-description" (processed pd.library.description),
-            makerName = divc "maker-name" (processed pd.maker),
+            libraryName = span "library-name" (processed pd.library.name),
+            libraryDescription = span "library-description" (processed pd.library.description),
+            makerName = span "maker-name" (processed pd.maker),
             availability = 
                 if pname == "" then "" 
                 else 
                     case platformStatus ptag pd of
                     Available ():
-                        divc "availability available" "Available for \(pname)";
+                        span "availability available" "Available for \(pname)";
                     MaybeAvailable ():
-                        divc "availability maybe-available" "Availability for \(pname) uncertain";
+                        span "availability maybe-available" "Availability for \(pname) uncertain";
                     Unavailable ():
-                        divc "availability unavailable" "Not available for \(pname)";
+                        span "availability unavailable" "Not available for \(pname)";
                     esac;
                 fi,
-            category = divc "category" (processed (strJoin ' > ' pd.category)),
+            category = span "category" (processed (strJoin ' > ' pd.category)),
             data = pd,
         }
     done plugs;
