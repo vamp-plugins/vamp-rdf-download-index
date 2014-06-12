@@ -233,9 +233,8 @@ route (Get "/plugin/list") do { headers, queryParams }:
         fi;
     fragments = map do pd:
         {
-            name = elt "b" "plugin-name" (processed pd.name),
-            description = span "plugin-description"
-               (strReplace "\n" "<br>" (processed pd.description)),
+            name = elt "b" "" (processed pd.name),
+            description = strReplace "\n" "<br>" (processed pd.description),
             logo =
                 if pd.makerLogoURL == "" then "" 
                 else
@@ -244,8 +243,8 @@ route (Get "/plugin/list") do { headers, queryParams }:
                     else i
                     fi
                 fi,
-            libraryLinks = span "links"
-               (if pd.library.downloadURL != "" then
+            libraryLinks = 
+                if pd.library.downloadURL != "" then
                     if pd.library.infoURL != "" then
                         link pd.library.infoURL "More info" ^ " "
                     else ""
@@ -254,21 +253,20 @@ route (Get "/plugin/list") do { headers, queryParams }:
                 elif pd.library.infoURL != "" then
                     link pd.library.infoURL "More info"
                 else ""
-                fi),
+                fi,
             pluginLinks = 
                 if pd.infoURL != "" then
-                    span "links" (link pd.infoURL "Documentation")
+                    link pd.infoURL "Documentation"
                 else ""
                 fi,
             libraryName =
-                elt "b" "library-name"
+                elt "b" ""
                    (processed
                         if pd.library.name == "" then pd.library.soname
                         else pd.library.name
                         fi),
-            libraryDescription = 
-                span "library-description" (processed pd.library.description),
-            makerName = elt "i" "maker-name" (processed pd.maker),
+            libraryDescription = processed pd.library.description,
+            makerName = elt "i" "" (processed pd.maker),
             availability = 
                 if pname == "" then "" 
                 else 
@@ -281,7 +279,7 @@ route (Get "/plugin/list") do { headers, queryParams }:
                         span "availability unavailable" "Not available for \(pname)";
                     esac;
                 fi,
-            category = elt "i" "category" (processed (strJoin ' > ' pd.category)),
+            category = processed (strJoin ' > ' pd.category),
             data = pd,
         }
     done plugs;
