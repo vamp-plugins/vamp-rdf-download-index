@@ -31,7 +31,8 @@ link url content =
 
 eltid e clas id content =
    (idbit = if id == "" then "" else " id=\"\(id)\"" fi;
-    "<\(e) class=\"\(clas)\"\(idbit)>\(content)</\(e)>");
+    clasbit = if clas == "" then "" else " class=\"\(clas)\"" fi;
+    "<\(e)\(clasbit)\(idbit)>\(content)</\(e)>");
 
 elt e clas content = eltid e clas "" content;
 

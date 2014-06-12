@@ -4,7 +4,7 @@
 
 program pluginlist;
 
-{ route, esc, link, divc, divid, elt, span, spanid } = load spag;
+{ route, esc, link, divc, divid, elt, eltid, span, spanid } = load spag;
 
 store = load yertle.store;
 property = load yertle.property;
@@ -174,37 +174,46 @@ groupByLibrary = groupBy do a b: if a.libraryName == "" or b.libraryName == "" t
 renderSearchResult fragment =
     fragment.logo ^ fragment.libraryName ^ fragment.name;
 
+oddEven thing = 
+   (var prev = false;
+      \(synchronized prev do:
+            if prev then prev := false; "\(thing)-odd"
+            else prev := true; "\(thing)-even" 
+            fi
+        done));
+
+libOddEven = oddEven "library";
+plugOddEven = oddEven "plugin";
+        
 renderLibraryPlugins plugins =
     case plugins of
     first::rest:
        (i = divIdFor first.data.pluginNode;
-        divid "library" "lib-\(i)"
+        eltid "li" "library \(libOddEven ())" "lib-\(i)"
            (divc "library-logo-name" (first.logo ^ first.libraryName) ^
             divc "library-description" first.libraryDescription ^
             divc "library-maker" first.makerName ^
             divc "library-availability" first.availability ^
-            divc "library-links" first.libraryLinks) ^
-        "\n" ^
-        divid "plugins" "plug-\(i)"
-           ("<ul><li>" ^
-            strJoin "</li><li>"
-               (map do p:
-                    divc "plugin-name" p.name ^
-                    divc "plugin-category" p.category ^
-                    divc "plugin-description" p.description ^
-                    if p.pluginLinks != "" 
-                    then divc "plugin-links" p.pluginLinks
-                    else "" fi
-                done plugins) ^
-            "</li></ul>")
+            divc "library-links" first.libraryLinks ^
+            "\n" ^
+            eltid "ul" "plugins" "plugs-\(i)"
+               (strJoin "\n"
+                   (map do p:
+                        elt "li" "plugin \(plugOddEven ())"
+                           (divc "plugin-name" p.name ^
+                            divc "plugin-category" p.category ^
+                            divc "plugin-description" p.description ^
+                            if p.pluginLinks != "" 
+                            then divc "plugin-links" p.pluginLinks
+                            else "" fi)
+                    done plugins)));
         );
     _: "";
     esac;
 
 renderSearchResults fragments =
     "<ul>\n" ^
-    "<li>" ^
-    strJoin "</li>\n<li>" (map renderLibraryPlugins (groupByLibrary fragments)) ^
+    strJoin "\n" (map renderLibraryPlugins (groupByLibrary fragments)) ^
     "</li>\n" ^
     "</ul>\n";
 
@@ -277,13 +286,20 @@ route (Get "/plugin/list") do { headers, queryParams }:
         }
     done plugs;
 
-    "<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"/css/main.css\"/></head><body><div class=\"pluginlist\">" ^
+    "<html>" ^
+    "<head>" ^
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"/css/main.css\"/>" ^
+    "</head>" ^
+    "<body>" ^
+    "<div class=\"pluginlist\">" ^
     if search != "" then
         renderSearchResults fragments
     else
         renderPluginList fragments
-    fi
-    ^ "</div></body></html>";
+    fi ^
+    "</div>" ^
+    "</body>" ^
+    "</html>";
 done;
 
 route (Get "/css/main.css") do _:

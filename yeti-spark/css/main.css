@@ -1,14 +1,37 @@
 
+.pluginlist {
+    width: 80%;
+    margin: 0 auto;
+}
+
 .library {
     float: left;
     clear: both;
+    width: 100%;
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
 }
 
-.plugin {
+.plugins {
     float: right;
     clear: right;
+    width: 75%;
+    padding-top: 1em;
+}
+
+.plugins li, .library li {
+    padding-bottom: 0.5em;
+}
+
+.library-even {
+    background: #eeeeee;
+}
+
+.library-odd {
+    background: #dddddd;
 }
 
 li {
     list-style-type: none;
 }
+
