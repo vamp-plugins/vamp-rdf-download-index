@@ -279,7 +279,7 @@ route (Get "/plugin/list") do { headers, queryParams }:
                         span "availability unavailable" "Not available for \(pname)";
                     esac;
                 fi,
-            category = processed (strJoin ' > ' pd.category),
+            category = elt "i" "" (processed (strJoin ' > ' pd.category)),
             data = pd,
         }
     done plugs;
