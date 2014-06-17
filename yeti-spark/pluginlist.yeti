@@ -50,6 +50,8 @@ pluginData =
     map (vamprdf.pluginDataByNode pluginStore)
        (vamprdf.allPluginNodes pluginStore);
 
+//!!! should have cc:license as well
+
 warnMissing pdata =
    (warn prop =
         eprintln "** NOTE: \(pdata.pluginKey): Lacks \(prop)";
