@@ -53,21 +53,28 @@ pluginData =
 //!!! should have cc:license as well
 
 warnMissing pdata =
-   (warn prop =
-        eprintln "** NOTE: \(pdata.pluginKey): Lacks \(prop)";
+   (note prop =
+        eprintln "**    note: \(pdata.pluginKey): Lacks \(prop)";
+    libnote prop =
+        eprintln "**    note: \(pdata.pluginKey): Library node lacks \(prop)";
+    warn prop =
+        eprintln "** WARNING: \(pdata.pluginKey): Lacks \(prop)";
     libwarn prop =
-        eprintln "** NOTE: \(pdata.pluginKey): Library node lacks \(prop)";
+        eprintln "** WARNING: \(pdata.pluginKey): Library node lacks \(prop)";
     if pdata.name == "" then warn "dc:title" fi;
     if pdata.description == "" then warn "dc:description" fi;
     if pdata.maker == "" then warn "foaf:maker/foaf:name" fi;
-    if pdata.copyright == "" then warn "dc:rights" fi;
-    if pdata.version == "" then warn "owl:versionInfo" fi;
+    if pdata.copyright == "" then note "dc:rights" fi;
+    if pdata.version == "" then note "owl:versionInfo" fi;
     if pdata.category == [] then warn "vamp:category" fi;
-    if pdata.infoURL == "" then warn "foaf:page" fi;
-    if pdata.makerLogoURL == "" then libwarn "foaf:maker/foaf:logo" fi;
+    if pdata.infoURL == "" then note "foaf:page" fi;
+    if pdata.makerLogoURL == "" then libnote "foaf:maker/foaf:logo" fi;
     if pdata.library.name == "" then libwarn "dc:title" fi;
     if pdata.library.description == "" then libwarn "dc:description" fi;
     if pdata.library.downloadURL == "" then libwarn "doap:download-page" fi;
+    if not pdata.library.source and empty? pdata.library.platforms then
+        libwarn "availability";
+    fi
     );
 
 for pluginData warnMissing;
