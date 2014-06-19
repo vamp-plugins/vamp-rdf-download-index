@@ -113,23 +113,41 @@ pluginSearchScore search plugin =
     fold do acc cat: acc + scorer cat done 0 plugin.category);
 
 filterPlugins search ptag plugins =
-    if strLength search < 2 then []
-    else
-        scorer = pluginSearchScore search;
-        results = concatMap do p:
-            score = scorer p;
-            if score > 0 then
-                case platformStatus ptag p of
-                Available (): [ { score = score + 100, p } ];
-                MaybeAvailable (): [ { score = score + 50, p } ];
-                Unavailable (): [ { score, p } ];
-                esac
-            else
-                []
-            fi
-            done plugins;
-        map (.p) (sortBy do a b: a.score > b.score done results)
-    fi;
+   (found = 
+        if strLength search < 2 then []
+        else
+            scorer = pluginSearchScore search;
+            results = concatMap do p:
+                score = scorer p;
+                if score > 0 then
+                    case platformStatus ptag p of
+                    Available (): [ { score = score + 100, p } ];
+                    MaybeAvailable (): [ { score = score + 50, p } ];
+                    Unavailable (): [ { score, p } ];
+                    esac
+                else
+                    []
+                fi
+                done plugins;
+            map (.p) (sortBy do a b: a.score > b.score done results)
+        fi;
+    // Now produce a list of the found plugins, in the same order, but
+    // with plugins from the same library grouped together (at the
+    // position of the first plugin from that library)
+    libs = [:];
+    orderedLibs = array [];
+    for found do f: 
+        s = f.library.soname;
+        if not s in libs then
+            push orderedLibs s;
+            libs[s] := true;
+        fi;
+    done;
+    concatMap do s:
+        concatMap do f:
+            if s == f.library.soname then [f] else [] fi
+        done found;
+    done orderedLibs);
 
 sortPlugins =
    (props = map (strLower .) [ (.maker), (.library.name), (.name) ];
