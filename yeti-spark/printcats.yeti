@@ -1,0 +1,23 @@
+program printcats;
+
+vamp = load may.vamp;
+
+println "@prefix vamp: <http://purl.org/ontology/vamp/> .";
+println "@prefix : <#> .";
+println "";
+
+plugroot = "http://vamp-plugins.org/rdf/plugins/";
+
+for (concatMap do key:
+    plug = case vamp.loadPlugin 44100 key of
+        OK p: p;
+        _: failWith "argh" ;
+    esac;
+    cat = strJoin " > " plug.category;
+    soname = (strSplit ":" key)[0];
+    if cat == "" then []
+    else [
+        "<\(plugroot)\(soname)#\(plug.identifier)> vamp:category \"\(cat)\" ."
+    ]
+    fi;
+done (vamp.pluginKeys)) println;
