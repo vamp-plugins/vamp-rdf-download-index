@@ -150,7 +150,7 @@ filterPlugins search ptag plugins =
     done orderedLibs);
 
 sortPlugins =
-   (props = map (strLower .) [ (.maker), (.library.name), (.name) ];
+   (props = map (strLower .) [ (.library.name), (.maker), (.name) ];
     sortBy do a b:
         case (find do prop: prop a != prop b done props) of
         prop::_: prop a < prop b;
@@ -217,23 +217,26 @@ renderLibraryPlugins plugins =
     first::rest:
        (i = divIdFor first.data.pluginNode;
         eltid "li" "library \(libOddEven ())" "lib-\(i)"
-           (divc "library-logo-name" (first.logo ^ first.libraryName) ^
-            divc "library-description" first.libraryDescription ^
-            divc "library-maker" first.makerName ^
-            divc "library-availability" first.availability ^
-            divc "library-links" first.libraryLinks ^
-            "\n" ^
-            eltid "ul" "plugins" "plugs-\(i)"
-               (strJoin "\n"
-                   (map do p:
-                        elt "li" "plugin \(plugOddEven ())"
-                           (divc "plugin-name" p.name ^
-                            divc "plugin-category" p.category ^
-                            divc "plugin-description" p.description ^
-                            if p.pluginLinks != "" 
-                            then divc "plugin-links" p.pluginLinks
-                            else "" fi)
-                    done plugins)));
+           (divc "library-header"
+               (if first.logo == "" then "" else divc "maker-logo" first.logo fi ^
+                divc "library-name" first.libraryName ^
+                divc "library-maker" first.makerName) ^
+            divc "library-body"
+               (divc "library-description" first.libraryDescription ^
+                divc "library-availability" first.availability ^
+                divc "library-links" first.libraryLinks ^
+                "\n" ^
+                eltid "ul" "plugins" "plugs-\(i)"
+                   (strJoin "\n"
+                       (map do p:
+                            elt "li" "plugin \(plugOddEven ())"
+                              (divc "plugin-name" p.name ^
+                               divc "plugin-category" p.category ^
+                               divc "plugin-description" p.description ^
+                               if p.pluginLinks != "" 
+                               then divc "plugin-links" p.pluginLinks
+                               else "" fi)
+                        done plugins))));
         );
     _: "";
     esac;
@@ -252,6 +255,7 @@ route (Get "/plugin/list") do { headers, queryParams }:
     eprintln "platform = \(ptag)";
     search = if "search" in queryParams then queryParams["search"] else "" fi;
     processed = (highlighted search) . esc;
+    sentence text = if strEnds? text "." then text else text ^ "." fi;
     plugs = 
         if search != "" then
             filterPlugins search ptag pluginData
@@ -260,8 +264,11 @@ route (Get "/plugin/list") do { headers, queryParams }:
         fi;
     fragments = map do pd:
         {
-            name = elt "b" "" (processed pd.name),
-            description = strReplace "\n" "<br>" (processed pd.description),
+            name = processed pd.name,
+            description =
+                strReplace "\n" "<br>"
+                   (strReplace "\n\n" "\n"
+                       (processed (sentence (strTrim pd.description)))),
             logo =
                 if pd.makerLogoURL == "" then "" 
                 else
@@ -273,12 +280,12 @@ route (Get "/plugin/list") do { headers, queryParams }:
             libraryLinks = 
                 if pd.library.downloadURL != "" then
                     if pd.library.infoURL != "" then
-                        link pd.library.infoURL "More info" ^ " "
+                        link pd.library.infoURL "More information" ^ "<br>"
                     else ""
                     fi ^
                         link pd.library.downloadURL "Download"
                 elif pd.library.infoURL != "" then
-                    link pd.library.infoURL "More info"
+                    link pd.library.infoURL "More information"
                 else ""
                 fi,
             pluginLinks = 
@@ -287,13 +294,13 @@ route (Get "/plugin/list") do { headers, queryParams }:
                 else ""
                 fi,
             libraryName =
-                elt "b" ""
-                   (processed
-                        if pd.library.name == "" then pd.library.soname
-                        else pd.library.name
-                        fi),
-            libraryDescription = processed pd.library.description,
-            makerName = elt "i" "" (processed pd.maker),
+                processed
+                    if pd.library.name == "" then pd.library.soname
+                    else pd.library.name
+                    fi,
+            libraryDescription = 
+                processed (sentence (strTrim pd.library.description)),
+            makerName = processed pd.maker,
             availability = 
                 if pname == "" then "" 
                 else 
@@ -301,12 +308,12 @@ route (Get "/plugin/list") do { headers, queryParams }:
                     Available ():
                         span "availability available" "Available for \(pname)";
                     MaybeAvailable ():
-                        span "availability maybe-available" "Uncertain availability for \(pname)";
+                        span "availability maybe-available" "";
                     Unavailable ():
                         span "availability unavailable" "Not available for \(pname)";
                     esac;
                 fi,
-            category = elt "i" "" (processed (strJoin ' > ' pd.category)),
+            category = strJoin " &rarr; " (map processed pd.category),
             data = pd,
         }
     done plugs;
