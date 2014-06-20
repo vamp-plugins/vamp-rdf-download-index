@@ -30,5 +30,5 @@ if [ "$ARCH" = "unknown" ]; then
     exit 2
 fi
 
-VAMP_PATH=$mydir/rdf/plugins LD_LIBRARY_PATH="$MAY_DIR/ext/native/$ARCH:$LD_LIBRARY_PATH" java -cp target/classes:spark/target/classes:"$CLASSPATH" pluginlist
+VAMP_PATH=$mydir/public/rdf/plugins LD_LIBRARY_PATH="$MAY_DIR/ext/native/$ARCH:$LD_LIBRARY_PATH" java -cp target/classes:spark/target/classes:"$CLASSPATH" pluginlist
 
