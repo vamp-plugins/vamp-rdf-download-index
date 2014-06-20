@@ -33,7 +33,7 @@ platformName ptag =
     elif ptag == "linux64" then "64-bit Linux"
     elif ptag == "win32" then "Windows"
     elif ptag == "osx" then "Mac OS/X"
-    else ""
+    else "Other"
     fi;
 
 platformStatus tag pluginData =
@@ -42,6 +42,14 @@ platformStatus tag pluginData =
     elif empty? pluginData.library.platforms or pluginData.library.source then MaybeAvailable ()
     else Unavailable ()
     fi;
+
+platformSelector current =
+    strJoin ""
+       (map do p:
+            cclass = if p == current then "platform-current" else "" fi;
+            span "platform \(cclass)"
+                "<a href=\"/plugin/list?platform=\(p)\">\(platformName p)</a>&nbsp;";
+        done [ "win32", "osx", "linux32", "linux64", "other" ]);
 
 pluginData = 
     map (vamprdf.pluginDataByNode pluginStore)
@@ -258,12 +266,17 @@ renderSearchResults = renderLibraryList true;
 renderPluginList = renderLibraryList false;
 
 searchForm queryParams =
+   (deflt =
+        if "search" in queryParams then
+            esc queryParams["search"] 
+        else ""
+        fi;
     "<form action=\"/plugin/list\" method=\"get\">\n" ^
     "<label for=\"search\">Search:</label>\n" ^
-    "<input id=\"search\" type=\"text\" name=\"search\" value=\"\(esc queryParams['search'])\">\n" ^
+    "<input id=\"search\" type=\"text\" name=\"search\" value=\"\(deflt)\">\n" ^
     "<input type=\"submit\" name=\"go\" value=\"Go\">\n" ^
     "<input type=\"submit\" name=\"clear\" value=\"Clear\">\n" ^
-    "</form>\n";
+    "</form>\n");
 
 staticFileLocation "public";
 
@@ -323,7 +336,7 @@ route (Get "/plugin/list") do { headers, queryParams }:
                 processed (sentence (strTrim pd.library.description)),
             makerName = processed pd.maker,
             availability = 
-                if pname == "" then "" 
+                if pname == "" or pname == "Other" then "" 
                 else 
                     case platformStatus ptag pd of
                     Available ():
@@ -349,6 +362,7 @@ route (Get "/plugin/list") do { headers, queryParams }:
     "</head>" ^
     "<body>" ^
     searchForm queryParams ^
+    platformSelector ptag ^
     "<div class=\"pluginlist\">" ^
     if search != "" then
         renderSearchResults fragments
