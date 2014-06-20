@@ -218,6 +218,8 @@ renderLibraryPlugins expanded plugins =
     case plugins of
     first::rest:
        (i = divIdFor first.data.pluginNode;
+        defaultShownHidden = 
+            if expanded then 'default-shown' else 'default-hidden' fi;
         eltid "li" "library \(libOddEven ())" "lib-\(i)"
            (divc "library-header"
                (if first.logo == "" then "" else divc "maker-logo" first.logo fi ^
@@ -227,9 +229,10 @@ renderLibraryPlugins expanded plugins =
                (divc "library-description" first.libraryDescription ^
                 showHide expanded i ^
                 divc "library-availability" first.availability ^
+                divc "library-source-availability" first.sourceAvailability ^
                 divc "library-links" first.libraryLinks ^
                 "\n" ^
-                eltid "ul" "plugins \(if expanded then 'default-shown' else 'default-hidden' fi)" "plugs-\(i)"
+                eltid "ul" "plugins \(defaultShownHidden)" "plugs-\(i)"
                    (strJoin "\n"
                        (map do p:
                             elt "li" "plugin \(plugOddEven ())"
@@ -331,6 +334,9 @@ route (Get "/plugin/list") do { headers, queryParams }:
                         span "availability unavailable" "Not available for \(pname)";
                     esac;
                 fi,
+            sourceAvailability = 
+                span "availability available"
+                   (if pd.library.source then "With source code" else "No source code" fi),
             category = strJoin " &rarr; " (map processed pd.category),
             data = pd,
         }

@@ -147,11 +147,11 @@ a:hover {
     display: block;
 }
 
-.library-availability, .library-links, .plugin-links, .plugin-category, .plugs-showhide {
+.library-availability, .library-source-availability, .library-links, .plugin-links, .plugin-category, .plugs-showhide {
     font-size: 0.85em;
 }
 
-.library-availability {
+.library-availability, .library-source-availability {
     color: #505050;
 }
 
