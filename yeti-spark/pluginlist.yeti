@@ -210,7 +210,7 @@ libOddEven = oddEven "library";
 plugOddEven = oddEven "plugin";
 
 showHide expanded i =
-   (text = if expanded then "Less" else "More" fi;
+   (text = if expanded then "&#9660; Less" else "&#9654; More" fi;
     divc "plugs-showhide"
        ("<a id=\"plugs-showhide-\(i)\" onclick=\"togglePlugin('\(i)');\"/>\(text)</a>"));
         

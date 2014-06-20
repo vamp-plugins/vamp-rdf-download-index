@@ -4,10 +4,10 @@ function togglePlugin(id) {
     var b = document.getElementById('plugs-showhide-' + id);
     if (e.style.display == 'block') {
 	e.style.display = 'none';
-	b.innerHTML = 'More';
+	b.innerHTML = '&#9654; More';
     } else {
 	e.style.display = 'block';
-	b.innerHTML = 'Less';
+	b.innerHTML = '&#9660; Less';
     }
 }
 
