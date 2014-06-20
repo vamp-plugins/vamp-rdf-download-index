@@ -45,7 +45,7 @@ h1,h2,h3,h4 {
 }
 
 li {
-    list-style-type: none;
+    list-style-type: none; 
 }
 
 .highlight {
@@ -65,12 +65,31 @@ a:hover {
   color: #ef6a35;
 }
 
+.plugs-showhide {
+  color: #ef6a35;
+}    
+
 .maker-logo {
     max-width: 4em;
     max-height: 3.2em;
     height: auto;
     position: absolute;
     right: 13%;
+}
+
+.plugin-piece {
+    max-width: 20px;
+    max-height: 20px;
+    width: auto;
+    float: left;
+}
+
+.plugin-name {
+    margin-top: 0.5em;
+}
+
+.plugin-name, .plugin-category, .plugin-description, .plugin-links {
+    margin-left: 24px;
 }
 
 .library-header {
@@ -105,6 +124,13 @@ a:hover {
     margin-right: 10%;
 }
 
+.plugs-showhide {
+    clear: right;
+    float: right;
+    width: 64%;
+    margin-right: 10%;
+}
+
 .plugins {
     float: right;
     clear: right;
@@ -113,7 +139,15 @@ a:hover {
     padding-top: 1em;
 }
 
-.library-availability, .library-links, .plugin-links, .plugin-category {
+.default-hidden {
+    display: none;
+}
+
+.default-shown {
+    display: block;
+}
+
+.library-availability, .library-links, .plugin-links, .plugin-category, .plugs-showhide {
     font-size: 0.85em;
 }
 

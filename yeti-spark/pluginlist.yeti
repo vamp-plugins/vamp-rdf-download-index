@@ -1,10 +1,7 @@
 
-// Dan's suggestion
-//  * Vamp aubio plugins, 0.4.0 [info] [download] [download source code]
-
 program pluginlist;
 
-{ route, esc, link, divc, divid, elt, eltid, span, spanid } = load spag;
+{ route, esc, link, divc, divid, elt, eltid, span, spanid, staticFileLocation } = load spag;
 
 store = load yertle.store;
 property = load yertle.property;
@@ -211,8 +208,13 @@ oddEven thing =
 
 libOddEven = oddEven "library";
 plugOddEven = oddEven "plugin";
+
+showHide expanded i =
+   (text = if expanded then "Less" else "More" fi;
+    divc "plugs-showhide"
+       ("<a id=\"plugs-showhide-\(i)\" onclick=\"togglePlugin('\(i)');\"/>\(text)</a>"));
         
-renderLibraryPlugins plugins =
+renderLibraryPlugins expanded plugins =
     case plugins of
     first::rest:
        (i = divIdFor first.data.pluginNode;
@@ -223,14 +225,16 @@ renderLibraryPlugins plugins =
                 divc "library-maker" first.makerName) ^
             divc "library-body"
                (divc "library-description" first.libraryDescription ^
+                showHide expanded i ^
                 divc "library-availability" first.availability ^
                 divc "library-links" first.libraryLinks ^
                 "\n" ^
-                eltid "ul" "plugins" "plugs-\(i)"
+                eltid "ul" "plugins \(if expanded then 'default-shown' else 'default-hidden' fi)" "plugs-\(i)"
                    (strJoin "\n"
                        (map do p:
                             elt "li" "plugin \(plugOddEven ())"
-                              (divc "plugin-name" p.name ^
+                              ("<img class=\"plugin-piece\" src=\"/images/jigsaw-piece.png\">" ^
+                               divc "plugin-name" p.name ^
                                divc "plugin-category" p.category ^
                                divc "plugin-description" p.description ^
                                if p.pluginLinks != "" 
@@ -241,15 +245,29 @@ renderLibraryPlugins plugins =
     _: "";
     esac;
 
-renderSearchResults fragments =
+renderLibraryList expanded fragments =
     "<ul>\n" ^
-    strJoin "\n" (map renderLibraryPlugins (groupByLibrary fragments)) ^
+    strJoin "\n" (map (renderLibraryPlugins expanded) (groupByLibrary fragments)) ^
     "</li>\n" ^
     "</ul>\n";
 
-renderPluginList = renderSearchResults; //!!!
+renderSearchResults = renderLibraryList true;
+renderPluginList = renderLibraryList false;
+
+searchForm queryParams =
+    "<form action=\"/plugin/list\" method=\"get\">\n" ^
+    "<label for=\"search\">Search:</label>\n" ^
+    "<input id=\"search\" type=\"text\" name=\"search\" value=\"\(esc queryParams['search'])\">\n" ^
+    "<input type=\"submit\" name=\"go\" value=\"Go\">\n" ^
+    "<input type=\"submit\" name=\"clear\" value=\"Clear\">\n" ^
+    "</form>\n";
+
+staticFileLocation "public";
 
 route (Get "/plugin/list") do { headers, queryParams }:
+    if "clear" in queryParams and not "go" in queryParams then
+        queryParams["search"] := "";
+    fi;
     ptag = platformTag { headers, queryParams };
     pname = platformName ptag;
     eprintln "platform = \(ptag)";
@@ -280,12 +298,12 @@ route (Get "/plugin/list") do { headers, queryParams }:
             libraryLinks = 
                 if pd.library.downloadURL != "" then
                     if pd.library.infoURL != "" then
-                        link pd.library.infoURL "More information" ^ "<br>"
+                        link pd.library.infoURL "Plugin homepage" ^ "<br>"
                     else ""
                     fi ^
                         link pd.library.downloadURL "Download"
                 elif pd.library.infoURL != "" then
-                    link pd.library.infoURL "More information"
+                    link pd.library.infoURL "Plugin homepage"
                 else ""
                 fi,
             pluginLinks = 
@@ -321,8 +339,10 @@ route (Get "/plugin/list") do { headers, queryParams }:
     "<html>" ^
     "<head>" ^
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"/css/main.css\"/>" ^
+    "<script src=\"/js/bits.js\" type=\"text/javascript\"></script>" ^
     "</head>" ^
     "<body>" ^
+    searchForm queryParams ^
     "<div class=\"pluginlist\">" ^
     if search != "" then
         renderSearchResults fragments
@@ -332,9 +352,4 @@ route (Get "/plugin/list") do { headers, queryParams }:
     "</div>" ^
     "</body>" ^
     "</html>";
-done;
-
-route (Get "/css/main.css") do _:
-    readFile "css/main.css" "UTF-8"
-        do h: strJoin "\n" (h.lines ()) done;
 done;
