@@ -11,7 +11,7 @@ if [ ! -f "spark/target/classes/spark/Spark.class" ]; then
     ( cd spark ; mvn compile ) || exit 1
 fi
 
-CLASSPATH=`find ~/.m2 "$MAY_DIR" -name \*.jar -print0 | sed 's/\x00/:/g'`:"$YETI_DIR/yeti-lib.jar"
+CLASSPATH=`echo jar/*.jar | sed 's/ /:/g'`:.
 
 "$MAY_DIR/bin/yc" -d target/classes -cp "spark/target/classes:$CLASSPATH" ./pluginlist.yeti || exit 1
 
