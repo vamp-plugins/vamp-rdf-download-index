@@ -225,29 +225,26 @@ groupByLibrary = groupBy do a b: if a.libraryName == "" or b.libraryName == "" t
 renderSearchResult fragment =
     fragment.logo ^ fragment.libraryName ^ fragment.name;
 
-oddEven thing = 
+alternator classbase =
    (var prev = false;
       \(synchronized prev do:
-            if prev then prev := false; "\(thing)-odd"
-            else prev := true; "\(thing)-even" 
+            if prev then prev := false; "\(classbase)-odd"
+            else prev := true; "\(classbase)-even" 
             fi
         done));
-
-libOddEven = oddEven "library";
-plugOddEven = oddEven "plugin";
 
 showHide expanded i =
    (text = if expanded then "&#9660; Less" else "&#9654; More" fi;
     divc "plugs-showhide"
        ("<a id=\"plugs-showhide-\(i)\" onclick=\"togglePlugin('\(i)');\"/>\(text)</a>"));
         
-renderLibraryPlugins expanded plugins =
+renderLibraryPlugins expanded altern plugins =
     case plugins of
     first::rest:
        (i = divIdFor first.data.pluginNode;
         defaultShownHidden = 
             if expanded then 'default-shown' else 'default-hidden' fi;
-        eltid "li" "library \(libOddEven ())" "lib-\(i)"
+        eltid "li" "library \(altern ())" "lib-\(i)"
            (divc "library-header"
                (if first.logo == "" then "" else divc "maker-logo" first.logo fi ^
                 divc "library-name" first.libraryName ^
@@ -264,7 +261,7 @@ renderLibraryPlugins expanded plugins =
                     eltid "ul" "plugins \(defaultShownHidden)" "plugs-\(i)"
                        (strJoin "\n"
                            (map do p:
-                                elt "li" "plugin \(plugOddEven ())"
+                                elt "li" "plugin"
                                   ("<img class=\"plugin-piece\" src=\"/images/jigsaw-piece.png\">" ^
                                    divc "plugin-name" p.name ^
                                    divc "plugin-category" p.category ^
@@ -278,9 +275,10 @@ renderLibraryPlugins expanded plugins =
     esac;
 
 renderLibraryList expanded fragments =
+   (alt = alternator "library";
     "<ul>\n" ^
-    strJoin "\n" (map (renderLibraryPlugins expanded) (groupByLibrary fragments)) ^
-    "</ul>\n";
+    strJoin "\n" (map (renderLibraryPlugins expanded alt) (groupByLibrary fragments)) ^
+    "</ul>\n");
 
 searchForm queryParams ptag =
    (deflt =
