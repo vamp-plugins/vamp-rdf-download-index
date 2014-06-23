@@ -305,7 +305,8 @@ searchForm queryParams ptag =
 renderPluginList { queryParams, search, ptag, plugs } =
    (pname = platformName ptag;
     processed = (highlighted search) . esc;
-    sentence text = if strEnds? text "." then text else text ^ "." fi;
+    sentence text = strReplace "VAMP" "Vamp"
+       (if strEnds? text "." then text else text ^ "." fi);
     fragments = map do pd:
         {
             name = processed pd.name,
