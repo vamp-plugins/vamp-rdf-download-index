@@ -55,14 +55,14 @@ platformStatus tag pluginData =
     fi;
 
 platformSelector queryParams current =
-    strJoin ""
+    "Platform" ^ strJoin ""
        (map do p:
             if p == current then
-                "<span class=\"platform platform-current\">\(platformName p)</span>&nbsp;"
+                "<span class=\"platform-button platform-current\">&nbsp;\(platformName p)&nbsp;</span>"
             else
                 url = urlOf downloadPageRoute queryParams [ "platform": p ];
-                span "platform"
-                    "<a href=\"\(url)\">\(platformName p)</a>&nbsp;";
+                span "platform-button"
+                    "&nbsp;<a href=\"\(url)\">\(platformName p)</a>&nbsp;";
             fi;
         done [ "win32", "osx", "linux32", "linux64", "other" ]);
 
@@ -130,7 +130,11 @@ pluginSearchScore search plugin =
     scorer plugin.library.description +
     scorer plugin.library.soname +
     scorer plugin.maker +
-    fold do acc cat: acc + scorer cat done 0 plugin.category);
+    fold do acc cat: acc + scorer cat done 0 plugin.category +
+    fold do acc out:
+        if scorer out.name > 0 or scorer out.description > 0 then 1
+        else acc fi
+        done 0 plugin.outputs);
 
 filterPlugins search ptag plugins =
    (found = 
@@ -249,24 +253,26 @@ renderLibraryPlugins expanded plugins =
                 divc "library-name" first.libraryName ^
                 divc "library-maker" first.makerName) ^
             divc "library-body"
-               (divc "library-description" first.libraryDescription ^
-                showHide expanded i ^
-                divc "library-availability" first.availability ^
-                divc "library-source-availability" first.sourceAvailability ^
-                divc "library-links" first.libraryLinks ^
-                "\n" ^
-                eltid "ul" "plugins \(defaultShownHidden)" "plugs-\(i)"
-                   (strJoin "\n"
-                       (map do p:
-                            elt "li" "plugin \(plugOddEven ())"
-                              ("<img class=\"plugin-piece\" src=\"/images/jigsaw-piece.png\">" ^
-                               divc "plugin-name" p.name ^
-                               divc "plugin-category" p.category ^
-                               divc "plugin-description" p.description ^
-                               if p.pluginLinks != "" 
-                               then divc "plugin-links" p.pluginLinks
-                               else "" fi)
-                        done plugins))));
+               (divc "library-notes"
+                   (divc "library-availability" first.availability ^
+                    divc "library-source-availability" first.sourceAvailability ^
+                    divc "library-links" first.libraryLinks) ^
+                divc "library-main"
+                   (divc "library-description" first.libraryDescription ^
+                    showHide expanded i ^
+                    "\n" ^
+                    eltid "ul" "plugins \(defaultShownHidden)" "plugs-\(i)"
+                       (strJoin "\n"
+                           (map do p:
+                                elt "li" "plugin \(plugOddEven ())"
+                                  ("<img class=\"plugin-piece\" src=\"/images/jigsaw-piece.png\">" ^
+                                   divc "plugin-name" p.name ^
+                                   divc "plugin-category" p.category ^
+                                   divc "plugin-description" p.description ^
+                                   if p.pluginLinks != "" 
+                                   then divc "plugin-links" p.pluginLinks
+                                   else "" fi)
+                            done plugins)))));
         );
     _: "";
     esac;
@@ -275,9 +281,6 @@ renderLibraryList expanded fragments =
     "<ul>\n" ^
     strJoin "\n" (map (renderLibraryPlugins expanded) (groupByLibrary fragments)) ^
     "</ul>\n";
-
-renderSearchResults = renderLibraryList true;
-renderPluginList = renderLibraryList false;
 
 searchForm queryParams ptag =
    (deflt =
@@ -293,24 +296,10 @@ searchForm queryParams ptag =
     "<input type=\"submit\" name=\"clear\" value=\"Clear\">\n" ^
     "</form>\n");
 
-staticFileLocation "public";
-
-route (Get downloadPageRoute) do { headers, queryParams }:
-    if "clear" in queryParams and not "go" in queryParams then
-        queryParams["search"] := "";
-    fi;
-    ptag = platformTag { headers, queryParams };
-    pname = platformName ptag;
-    eprintln "platform = \(ptag)";
-    search = if "search" in queryParams then queryParams["search"] else "" fi;
+renderPluginList { queryParams, search, ptag, plugs } =
+   (pname = platformName ptag;
     processed = (highlighted search) . esc;
     sentence text = if strEnds? text "." then text else text ^ "." fi;
-    plugs = 
-        if search != "" then
-            filterPlugins search ptag pluginData
-        else
-            sortPlugins pluginData
-        fi;
     fragments = map do pd:
         {
             name = processed pd.name,
@@ -371,23 +360,41 @@ route (Get downloadPageRoute) do { headers, queryParams }:
         }
     done plugs;
 
-    html = 
-        "<script src=\"/bits.js\" type=\"text/javascript\"></script>" ^
-        searchForm queryParams ptag ^
-        platformSelector queryParams ptag ^
-        divc "pluginlist"
-           (if search != "" then
-                renderSearchResults fragments
-            else
-                renderPluginList fragments
-            fi);
+    pluginList = 
+        if not empty? fragments then
+            divc "pluginlist"
+               (renderLibraryList (search != "") fragments);
+        else
+            divc "no-results"
+               (elt "p" "" "No results found");
+        fi;
+
+    "<script src=\"/bits.js\" type=\"text/javascript\"></script>" ^
+    divc "search-form" (searchForm queryParams ptag) ^
+    divc "platform-selector" (platformSelector queryParams ptag) ^
+    pluginList);
+
+staticFileLocation "public";
+
+route (Get downloadPageRoute) do { headers, queryParams }:
+    if "clear" in queryParams and not "go" in queryParams then
+        queryParams["search"] := "";
+    fi;
+    ptag = platformTag { headers, queryParams };
+    search = if "search" in queryParams then queryParams["search"] else "" fi;
+    plugs = 
+        if search != "" then
+            filterPlugins search ptag pluginData
+        else
+            sortPlugins pluginData
+        fi;
 
     readFile "templates/download-test.html" "UTF-8" //!!!
         do handle:
             strJoin "\n"
                (map do line:
                     if line =~ "insert table here" then
-                        html
+                        renderPluginList { queryParams, search, ptag, plugs }
                     else
                         line
                     fi

@@ -7,9 +7,9 @@ mydir=`dirname "$0"`
 MAY_DIR=~/code/may
 YETI_DIR=~/code/yeti
 
-if [ ! -f "spark/target/classes/spark/Spark.class" ]; then
-    ( cd spark ; mvn compile ) || exit 1
-fi
+#if [ ! -f "spark/target/classes/spark/Spark.class" ]; then
+#    ( cd spark ; mvn compile ) || exit 1
+#fi
 
 CLASSPATH=`echo jar/*.jar | sed 's/ /:/g'`:.
 
