@@ -17,6 +17,10 @@ knownPlatforms = mapIntoHash id id [
     "linux32", "linux64", "win32", "osx", "other"
 ];
 
+vamPyPlatforms = mapIntoHash id id [
+    "linux32", "linux64", "win32", "osx"
+];
+
 platformTag { headers, queryParams } =
     // The returned value is safe text -- always one of a fixed set of
     // strings, never from user input
@@ -50,6 +54,7 @@ platformName ptag =
 platformStatus tag pluginData =
     if tag == "other" then MaybeAvailable ()
     elif not empty? (find (== tag) pluginData.library.platforms) then Available ()
+    elif pluginData.library.isVamPy and tag in vamPyPlatforms then Available ()
     elif empty? pluginData.library.platforms or pluginData.library.source then MaybeAvailable ()
     else Unavailable ()
     fi;
@@ -92,7 +97,9 @@ warnMissing pdata =
     if pdata.library.name == "" then libwarn "dc:title" fi;
     if pdata.library.description == "" then libwarn "dc:description" fi;
     if pdata.library.downloadURL == "" then libwarn "doap:download-page" fi;
-    if not pdata.library.source and empty? pdata.library.platforms then
+    if not pdata.library.source and 
+       empty? pdata.library.platforms and
+       not pdata.library.isVamPy then
         libwarn "availability";
     fi
     );
@@ -252,6 +259,7 @@ renderLibraryPlugins expanded altern plugins =
             divc "library-body"
                (divc "library-notes"
                    (divc "library-availability" first.availability ^
+                    divc "library-vampy" first.vamPy ^
                     divc "library-source-availability" first.sourceAvailability ^
                     divc "library-links" first.libraryLinks) ^
                 divc "library-main"
@@ -351,8 +359,11 @@ renderPluginList { queryParams, search, ptag, plugs } =
                     esac;
                 fi,
             sourceAvailability = 
-                span "availability available"
+                span "availability"
                    (if pd.library.source then "With source code" else "No source code" fi),
+            vamPy =
+                span "availability"
+                   (if pd.library.isVamPy then "Requires <a href=\"http://www.vamp-plugins.org/vampy.html\">VamPy</a>" else "" fi),
             category = strJoin " &rarr; " (map processed pd.category),
             data = pd,
         }
