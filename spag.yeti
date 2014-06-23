@@ -32,6 +32,18 @@ esc str =
 link url content =
     "<a href=\"\(url)\">\(content)</a>";
 
+urlOf route queryParams furtherParams =
+    //!!! url escape
+    route ^ "?" ^
+        strJoin "&"
+           (map do k:
+                if k in furtherParams then
+                    "\(esc k)=\(esc furtherParams[k])"
+                else
+                    "\(esc k)=\(esc queryParams[k])"
+                fi
+            done (nub (keys queryParams ++ keys furtherParams)));
+
 eltid e clas id content =
    (idbit = if id == "" then "" else " id=\"\(id)\"" fi;
     clasbit = if clas == "" then "" else " class=\"\(clas)\"" fi;
@@ -51,6 +63,7 @@ spanid = eltid "span";
     route,
     esc,
     link,
+    urlOf,
     elt,
     eltid,
     divc,

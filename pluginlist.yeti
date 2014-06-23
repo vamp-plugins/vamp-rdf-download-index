@@ -1,7 +1,7 @@
 
 program pluginlist;
 
-{ route, esc, link, divc, divid, elt, eltid, span, spanid, staticFileLocation } = load spag;
+{ route, esc, link, urlOf, divc, divid, elt, eltid, span, spanid, staticFileLocation } = load spag;
 
 store = load yertle.store;
 property = load yertle.property;
@@ -13,8 +13,17 @@ downloadPageRoute = "/download2.html";
 pluginStore = store.newRdfStore ();
 vamprdf.loadSystemVampRdf pluginStore;
 
+knownPlatforms = mapIntoHash id id [
+    "linux32", "linux64", "win32", "osx", "other"
+];
+
 platformTag { headers, queryParams } =
-    if "platform" in queryParams then queryParams["platform"]
+    // The returned value is safe text -- always one of a fixed set of
+    // strings, never from user input
+    if "platform" in queryParams 
+    then
+        qp = strLower queryParams["platform"];
+        if qp in knownPlatforms then qp else "other" fi;
     else
         ua = "User-Agent";
         if ua in headers then
@@ -24,9 +33,9 @@ platformTag { headers, queryParams } =
                 fi;
             elif headers[ua] =~ "Windows" then "win32"
             elif headers[ua] =~ "Macintosh" then "osx"
-            else "unknown"
+            else "other"
             fi
-        else "unknown"
+        else "other"
         fi
     fi;
 
@@ -39,18 +48,22 @@ platformName ptag =
     fi;
 
 platformStatus tag pluginData =
-    if tag == "unknown" then MaybeAvailable ()
+    if tag == "other" then MaybeAvailable ()
     elif not empty? (find (== tag) pluginData.library.platforms) then Available ()
     elif empty? pluginData.library.platforms or pluginData.library.source then MaybeAvailable ()
     else Unavailable ()
     fi;
 
-platformSelector current =
+platformSelector queryParams current =
     strJoin ""
        (map do p:
-            cclass = if p == current then "platform-current" else "" fi;
-            span "platform \(cclass)"
-                "<a href=\"\(downloadPageRoute)?platform=\(p)\">\(platformName p)</a>&nbsp;";
+            if p == current then
+                "<span class=\"platform platform-current\">\(platformName p)</span>&nbsp;"
+            else
+                url = urlOf downloadPageRoute queryParams [ "platform": p ];
+                span "platform"
+                    "<a href=\"\(url)\">\(platformName p)</a>&nbsp;";
+            fi;
         done [ "win32", "osx", "linux32", "linux64", "other" ]);
 
 pluginData = 
@@ -261,19 +274,19 @@ renderLibraryPlugins expanded plugins =
 renderLibraryList expanded fragments =
     "<ul>\n" ^
     strJoin "\n" (map (renderLibraryPlugins expanded) (groupByLibrary fragments)) ^
-    "</li>\n" ^
     "</ul>\n";
 
 renderSearchResults = renderLibraryList true;
 renderPluginList = renderLibraryList false;
 
-searchForm queryParams =
+searchForm queryParams ptag =
    (deflt =
         if "search" in queryParams then
             esc queryParams["search"] 
         else ""
         fi;
     "<form action=\"\(downloadPageRoute)\" method=\"get\">\n" ^
+    "<input type=\"hidden\" name=\"platform\" value=\"\(ptag)\">\n" ^
     "<label for=\"search\">Search:</label>\n" ^
     "<input id=\"search\" type=\"text\" name=\"search\" value=\"\(deflt)\">\n" ^
     "<input type=\"submit\" name=\"go\" value=\"Go\">\n" ^
@@ -360,8 +373,8 @@ route (Get downloadPageRoute) do { headers, queryParams }:
 
     html = 
         "<script src=\"/bits.js\" type=\"text/javascript\"></script>" ^
-        searchForm queryParams ^
-        platformSelector ptag ^
+        searchForm queryParams ptag ^
+        platformSelector queryParams ptag ^
         divc "pluginlist"
            (if search != "" then
                 renderSearchResults fragments
