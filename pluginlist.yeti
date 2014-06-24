@@ -5,7 +5,6 @@ program pluginlist;
 
 store = load yertle.store;
 property = load yertle.property;
-vamp = load may.vamp;
 vamprdf = load may.vamp.vamprdf;
 
 downloadPageRoute = "/download.html";
