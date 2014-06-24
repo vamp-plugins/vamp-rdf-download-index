@@ -2,6 +2,7 @@ program printcats;
 
 vamp = load may.vamp;
 
+println "# DO NOT EDIT - this was generated from the plugin .cat files by printcats.yeti";
 println "@prefix vamp: <http://purl.org/ontology/vamp/> .";
 println "@prefix : <#> .";
 println "";

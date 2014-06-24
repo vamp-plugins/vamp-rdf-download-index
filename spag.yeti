@@ -12,9 +12,10 @@ route match callback =
                 routeParams = customHash \(req#params());
                 queryParams = mapIntoHash id do p: req#queryParams(p) done
                    (map string req#queryParams()#toArray());
+                splatParams = req#splat() as list<string>;
                 headers = mapIntoHash id do h: req#headers(h) done
                    (map string req#headers()#toArray());
-                callback { routeParams, queryParams, headers },
+                callback { routeParams, queryParams, splatParams, headers },
         end;
         new Handler());
     case match of

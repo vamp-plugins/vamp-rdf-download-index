@@ -8,7 +8,7 @@ property = load yertle.property;
 vamp = load may.vamp;
 vamprdf = load may.vamp.vamprdf;
 
-downloadPageRoute = "/download2.html";
+downloadPageRoute = "/download.html";
 
 pluginStore = store.newRdfStore ();
 vamprdf.loadSystemVampRdf pluginStore;
@@ -384,7 +384,14 @@ renderPluginList { queryParams, search, ptag, plugs } =
     divc "platform-selector" (platformSelector queryParams ptag) ^
     pluginList);
 
+
+// We serve mostly static data, with just the odd dynamic path. Static
+// data is served from public/ and we override any routes we want for
+// dynamic content.
+
 staticFileLocation "public";
+
+// Download page, likely /download.html
 
 route (Get downloadPageRoute) do { headers, queryParams }:
     if "clear" in queryParams and not "go" in queryParams then
@@ -399,7 +406,7 @@ route (Get downloadPageRoute) do { headers, queryParams }:
             sortPlugins pluginData
         fi;
 
-    readFile "templates/download-test.html" "UTF-8" //!!!
+    readFile "templates/download.html" "UTF-8"
         do handle:
             strJoin "\n"
                (map do line:
@@ -411,3 +418,4 @@ route (Get downloadPageRoute) do { headers, queryParams }:
                 done (handle.lines ()))
         done;
 done;
+
