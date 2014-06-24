@@ -6,7 +6,8 @@ mydir=`dirname "$0"`
 #    ( cd spark ; mvn compile ) || exit 1
 #fi
 
-export CLASSPATH="$mydir/target/classes":`echo jar/*.jar | sed 's/ /:/g'`
+# NB path must contain . so that Spark will serve static files from public/
+export CLASSPATH="$mydir/target/classes:.:"`echo jar/*.jar | sed 's/ /:/g'`
 export VAMP_PATH="$mydir/rdf/plugins"
 
 # Compile the app!
