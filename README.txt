@@ -33,8 +33,10 @@ Outline Apache config
 	ServerName vamp-plugins.org
 	ServerAlias www.vamp-plugins.org 
 	
-	DocumentRoot /var/www/vamp-plugins.org
-	<Directory /var/www/vamp-plugins.org>
+	# Avoid serving anything unwarranted because of a forgotten
+	# alias or proxypass, by making the root be the public dir
+	DocumentRoot /var/www/vamp-plugins.org/public
+	<Directory /var/www/vamp-plugins.org/public>
 		Options None
 		AllowOverride None
 		Order allow,deny
@@ -57,16 +59,23 @@ Outline Apache config
                 Satisfy All
         </DirectoryMatch>
 
-	<Directory /var/www/vamp-plugins.org/pre>
-		Options +Indexes
-	</Directory>
+	# Exclude static rdf directory from the subsequent ProxyPass
+	ProxyPass /rdf !
+	
+	# Exclude the PHP forum from the subsequent ProxyPass
+	ProxyPass /forum !
 
-	<Directory /var/www/vamp-plugins.org/forum>
-		AddHandler fcgid-script .php
-		FCGIWrapper /usr/lib/cgi-bin/php5 .php
-		Options +ExecCGI
-		Options -MultiViews
-	</Directory>
+	# Exclude the wiki redirect from the subsequent ProxyPass
+	ProxyPass /wiki !
+
+	# Everything not excluded above gets served by Spark app
+	ProxyPass / http://localhost:4567/
+
+	# RDF dir we serve as a set of static files, but we enable
+        # *.n3 to be accessed without the .n3 extension so as to
+	# resolve the URIs of plugin resources
+
+	Alias /rdf /var/www/vamp-plugins.org/rdf
 
 	<Directory /var/www/vamp-plugins.org/rdf>
 		AddType application/rdf+xml .rdf
@@ -80,27 +89,34 @@ Outline Apache config
                 ExpiresDefault "access plus 5 minutes"
 	</Directory>
 
+	# Directory index allowed on plugin RDF dir
+
 	<Directory /var/www/vamp-plugins.org/rdf/plugins>
 		Options +Indexes
                 ExpiresDefault "access plus 5 minutes"
 	</Directory>
 
-	Redirect seeother /wiki http://code.soundsoftware.ac.uk/projects/vamp-p
-lugin-sdk/wiki
+	# Forum is a PHP application which we run through FCGI
 
-        <Directory /var/www/vamp-plugins.org/logs>
-                AuthUserFile "/var/www/.cannamlogs.htdigest"
-                AuthName "Server Usage Statistics"
-                AuthType Digest
-                Require user cannamlogs
-        </Directory>
+	Alias /forum /var/www/vamp-plugins.org/forum
 
-	ErrorLog /var/log/apache2/error.log
+	<Directory /var/www/vamp-plugins.org/forum>
+		AddHandler fcgid-script .php
+		FCGIWrapper /usr/lib/cgi-bin/php5 .php
+		Options +ExecCGI
+		Options -MultiViews
+	</Directory>
+
+	# Wiki is a redirect to the SoundSoftware code site
+
+	Redirect seeother /wiki http://code.soundsoftware.ac.uk/projects/vamp-plugin-sdk/wiki
+
+	ErrorLog /var/log/httpd/error.log
 
 	# Possible values include: debug, info, notice, warn, error, crit,
 	# alert, emerg.
 	LogLevel warn
 
-	CustomLog /var/log/apache2/vamp-plugins.log varnishcombined
 	ServerSignature Off
 </VirtualHost>
+
