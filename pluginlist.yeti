@@ -62,11 +62,12 @@ platformSelector queryParams current =
     "Platform" ^ strJoin ""
        (map do p:
             if p == current then
-                "<span class=\"platform-button platform-current\">&nbsp;\(platformName p)&nbsp;</span>"
+                span "platform-button platform-current"
+                    "&nbsp;\(platformName p)&nbsp";
             else
                 url = urlOf downloadPageRoute queryParams [ "platform": p ];
                 span "platform-button"
-                    "&nbsp;<a href=\"\(url)\">\(platformName p)</a>&nbsp;";
+                    "&nbsp;<a href='\(url)'>\(platformName p)</a>&nbsp;";
             fi;
         done [ "win32", "osx", "linux32", "linux64", "other" ]);
 
@@ -207,9 +208,8 @@ highlighted search text =
             slen = strLength search;
             tlen = strLength text;
             strLeft text ix ^
-                "<span class=\"highlight\">" ^ 
-                strSlice text ix (ix + slen) ^
-                "</span>" ^ 
+                span "highlight"
+                   (strSlice text ix (ix + slen)) ^
                 hlaux search 
                    (strSlice text (ix + slen) tlen)
                    (strSlice tlower (ix + slen) tlen);
@@ -226,7 +226,13 @@ highlighted search text =
         fi
     fi);
 
-groupByLibrary = groupBy do a b: if a.libraryName == "" or b.libraryName == "" then false else a.libraryName == b.libraryName fi done;
+groupByLibrary = groupBy
+    do a b:
+        if a.libraryName == "" or b.libraryName == "" 
+        then false 
+        else a.libraryName == b.libraryName 
+        fi 
+    done;
 
 renderSearchResult fragment =
     fragment.logo ^ fragment.libraryName ^ fragment.name;
@@ -242,7 +248,7 @@ alternator classbase =
 showHide expanded i =
    (text = if expanded then "&#9660; Less" else "&#9654; More" fi;
     divc "plugs-showhide"
-       ("<a id=\"plugs-showhide-\(i)\" onclick=\"togglePlugin('\(i)');\"/>\(text)</a>"));
+       ("<a id='plugs-showhide-\(i)' onclick=\"togglePlugin('\(i)');\"/>\(text)</a>"));
         
 renderLibraryPlugins expanded altern plugins =
     case plugins of
@@ -269,7 +275,7 @@ renderLibraryPlugins expanded altern plugins =
                        (strJoin "\n"
                            (map do p:
                                 elt "li" "plugin"
-                                  ("<img class=\"plugin-piece\" src=\"/images/jigsaw-piece.png\">" ^
+                                  ("<img class='plugin-piece' src='/images/jigsaw-piece.png'>" ^
                                    divc "plugin-name" p.name ^
                                    divc "plugin-category" p.category ^
                                    divc "plugin-description" p.description ^
@@ -293,12 +299,12 @@ searchForm queryParams ptag =
             esc queryParams["search"] 
         else ""
         fi;
-    "<form action=\"\(downloadPageRoute)\" method=\"get\">\n" ^
-    "<input type=\"hidden\" name=\"platform\" value=\"\(ptag)\">\n" ^
-    "<label for=\"search\">Search:</label>\n" ^
-    "<input id=\"search\" type=\"text\" name=\"search\" value=\"\(deflt)\">\n" ^
-    "<input type=\"submit\" name=\"go\" value=\"Go\">\n" ^
-    "<input type=\"submit\" name=\"clear\" value=\"Clear\">\n" ^
+    "<form action='\(downloadPageRoute)' method='get'>\n" ^
+    "<input type='hidden' name='platform' value='\(ptag)'>\n" ^
+    "<label for='search'>Search:</label>\n" ^
+    "<input id='search' type='text' name='search' value='\(deflt)'>\n" ^
+    "<input type='submit' name='go' value='Go'>\n" ^
+    "<input type='submit' name='clear' value='Clear'>\n" ^
     "</form>\n");
 
 renderPluginList { queryParams, search, ptag, plugs } =
@@ -316,7 +322,7 @@ renderPluginList { queryParams, search, ptag, plugs } =
             logo =
                 if pd.makerLogoURL == "" then "" 
                 else
-                    i = "<img class=\"maker-logo\" src=\"\(pd.makerLogoURL)\">";
+                    i = "<img border=0 class='maker-logo' src=\"\(pd.makerLogoURL)\">";
                     if pd.makerInfoURL != "" then link pd.makerInfoURL i
                     else i
                     fi
@@ -363,7 +369,7 @@ renderPluginList { queryParams, search, ptag, plugs } =
                    (if pd.library.source then "With source code" else "No source code" fi),
             vamPy =
                 span "availability"
-                   (if pd.library.isVamPy then "Requires <a href=\"http://www.vamp-plugins.org/vampy.html\">VamPy</a>" else "" fi),
+                   (if pd.library.isVamPy then "Requires <a href='http://www.vamp-plugins.org/vampy.html'>VamPy</a>" else "" fi),
             category = strJoin " &rarr; " (map processed pd.category),
             data = pd,
         }
@@ -378,7 +384,7 @@ renderPluginList { queryParams, search, ptag, plugs } =
                (elt "p" "" "No results found");
         fi;
 
-    "<script src=\"/bits.js\" type=\"text/javascript\"></script>" ^
+    "<script src='/bits.js' type='text/javascript'></script>" ^
     divc "search-form" (searchForm queryParams ptag) ^
     divc "platform-selector" (platformSelector queryParams ptag) ^
     pluginList);
