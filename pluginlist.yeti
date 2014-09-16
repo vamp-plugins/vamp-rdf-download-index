@@ -12,6 +12,8 @@ downloadPageRoute = "/download.html";
 pluginStore = store.newRdfStore ();
 vamprdf.loadSystemVampRdf pluginStore;
 
+featured = "silvet";
+
 knownPlatforms = mapIntoHash id id [
     "linux32", "linux64", "win32", "osx", "other"
 ];
@@ -307,74 +309,79 @@ searchForm queryParams ptag =
     "<input type='submit' name='clear' value='Clear'>\n" ^
     "</form>\n");
 
-renderPluginList { queryParams, search, ptag, plugs } =
+pluginHtmlFragments ptag processed sentence descriptor =
    (pname = platformName ptag;
-    processed = (highlighted search) . esc;
     sentence text = strReplace "VAMP" "Vamp"
        (if strEnds? text "." then text else text ^ "." fi);
-    fragments = map do pd:
-        {
-            name = processed pd.name,
-            description =
-                strReplace "\n" "<br>"
-                   (strReplace "\n\n" "\n"
-                       (processed (sentence (strTrim pd.description)))),
-            logo =
-                if pd.makerLogoURL == "" then "" 
-                else
-                    i = "<img border=0 class='maker-logo' src=\"\(pd.makerLogoURL)\">";
-                    if pd.makerInfoURL != "" then link pd.makerInfoURL i
-                    else i
-                    fi
-                fi,
-            libraryLinks = 
-            //!!! separate out, this mingling doesn't help
-                if pd.library.downloadURL != "" then
-                    if pd.library.infoURL != "" then
-                        link pd.library.infoURL "Plugin homepage" ^ "<br>"
-                    else ""
-                    fi ^
-                        link pd.library.downloadURL "Download"
-                elif pd.library.infoURL != "" then
-                    link pd.library.infoURL "Plugin homepage"
+    pd = descriptor;
+    {
+        name = processed pd.name,
+        description =
+            strReplace "\n" "<br>"
+               (strReplace "\n\n" "\n"
+                   (processed (sentence (strTrim pd.description)))),
+        logo =
+            if pd.makerLogoURL == "" then "" 
+            else
+                i = "<img border=0 class='maker-logo' src=\"\(pd.makerLogoURL)\">";
+                if pd.makerInfoURL != "" then link pd.makerInfoURL i
+                else i
+                fi
+            fi,
+        libraryLinks = 
+        //!!! separate out, this mingling doesn't help
+            if pd.library.downloadURL != "" then
+                if pd.library.infoURL != "" then
+                    link pd.library.infoURL "Plugin homepage" ^ "<br>"
                 else ""
+                fi ^
+                    link pd.library.downloadURL "Download"
+            elif pd.library.infoURL != "" then
+                link pd.library.infoURL "Plugin homepage"
+            else ""
+            fi,
+        pluginLinks = 
+            if pd.infoURL != "" then
+                link pd.infoURL "Documentation"
+            else ""
+            fi,
+        libraryName =
+            processed
+                if pd.library.name == "" then pd.library.soname
+                else pd.library.name
                 fi,
-            pluginLinks = 
-                if pd.infoURL != "" then
-                    link pd.infoURL "Documentation"
-                else ""
-                fi,
-            libraryName =
-                processed
-                    if pd.library.name == "" then pd.library.soname
-                    else pd.library.name
-                    fi,
-            libraryDescription = 
-                processed (sentence (strTrim pd.library.description)),
-            makerName = processed pd.maker,
-            availability = 
-                if pname == "" or pname == "Other" then "" 
-                else 
-                    case platformStatus ptag pd of
-                    Available ():
-                        span "availability available" "Available for \(pname)";
-                    MaybeAvailable ():
-                        span "availability maybe-available" "";
-                    Unavailable ():
-                        span "availability unavailable" "Not available for \(pname)";
-                    esac;
-                fi,
-            sourceAvailability = 
-                span "availability"
-                   (if pd.library.source then "With source code" else "No source code" fi),
-            vamPy =
-                span "availability"
-                   (if pd.library.isVamPy then "Requires <a href='http://www.vamp-plugins.org/vampy.html'>VamPy</a>" else "" fi),
-            category = strJoin " &rarr; " (map processed pd.category),
-            data = pd,
-        }
-    done plugs;
+        libraryDescription = 
+            processed (sentence (strTrim pd.library.description)),
+        makerName = processed pd.maker,
+        availability = 
+            if pname == "" or pname == "Other" then "" 
+            else 
+                case platformStatus ptag pd of
+                Available ():
+                    span "availability available" "Available for \(pname)";
+                MaybeAvailable ():
+                    span "availability maybe-available" "";
+                Unavailable ():
+                    span "availability unavailable" "Not available for \(pname)";
+                esac;
+            fi,
+        sourceAvailability = 
+            span "availability"
+               (if pd.library.source then "With source code" else "No source code" fi),
+        vamPy =
+            span "availability"
+               (if pd.library.isVamPy then "Requires <a href='http://www.vamp-plugins.org/vampy.html'>VamPy</a>" else "" fi),
+        category = strJoin " &rarr; " (map processed pd.category),
+        data = pd,
+    });
 
+renderFeaturedPlugin ptag plug =
+   (fragments = pluginHtmlFragments ptag id plug;
+    renderLibraryList false [fragments]);
+
+renderPluginList { queryParams, search, ptag, plugs } =
+   (processed = (highlighted search) . esc;
+    fragments = map (pluginHtmlFragments ptag processed) plugs;
     pluginList = 
         if not empty? fragments then
             divc "pluginlist"
@@ -383,7 +390,6 @@ renderPluginList { queryParams, search, ptag, plugs } =
             divc "no-results"
                (elt "p" "" "No results found");
         fi;
-
     "<script src='/bits.js' type='text/javascript'></script>" ^
     divc "search-form" (searchForm queryParams ptag) ^
     divc "platform-selector" (platformSelector queryParams ptag) ^
