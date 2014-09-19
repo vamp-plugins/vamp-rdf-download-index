@@ -12,7 +12,7 @@ downloadPageRoute = "/download.html";
 pluginStore = store.newRdfStore ();
 vamprdf.loadSystemVampRdf pluginStore;
 
-featured = "silvet";
+featured = "silvet:silvet";
 
 knownPlatforms = mapIntoHash id id [
     "linux32", "linux64", "win32", "osx", "other"
@@ -309,7 +309,7 @@ searchForm queryParams ptag =
     "<input type='submit' name='clear' value='Clear'>\n" ^
     "</form>\n");
 
-pluginHtmlFragments ptag processed sentence descriptor =
+pluginHtmlFragments ptag processed descriptor =
    (pname = platformName ptag;
     sentence text = strReplace "VAMP" "Vamp"
        (if strEnds? text "." then text else text ^ "." fi);
@@ -358,11 +358,11 @@ pluginHtmlFragments ptag processed sentence descriptor =
             else 
                 case platformStatus ptag pd of
                 Available ():
-                    span "availability available" "Available for \(pname)";
+                    span "availability available" "Available for selected platform";
                 MaybeAvailable ():
                     span "availability maybe-available" "";
                 Unavailable ():
-                    span "availability unavailable" "Not available for \(pname)";
+                    span "availability unavailable" "Not available for selected platform";
                 esac;
             fi,
         sourceAvailability = 
@@ -375,9 +375,26 @@ pluginHtmlFragments ptag processed sentence descriptor =
         data = pd,
     });
 
-renderFeaturedPlugin ptag plug =
-   (fragments = pluginHtmlFragments ptag id plug;
-    renderLibraryList false [fragments]);
+renderFeaturedPlugin ptag =
+    if featured != "" then
+        case vamprdf.pluginDataByKey pluginStore featured of
+        Some plug:
+            case platformStatus ptag plug of
+            Available ():
+                fragments = pluginHtmlFragments ptag id plug;
+                renderLibraryList false [fragments];
+            _:
+                eprintln "**    note: featured plugin \"\(featured)\" may not be available for platform \"\(ptag)\", skipping";
+                "";
+            esac;
+        None ():
+            eprintln "** WARNING: featured plugin key \"\(featured)\" not found";
+            "";
+        esac;
+    else
+        eprintln "**    note: no featured plugin defined";
+        "";
+    fi;
 
 renderPluginList { queryParams, search, ptag, plugs } =
    (processed = (highlighted search) . esc;
@@ -393,6 +410,18 @@ renderPluginList { queryParams, search, ptag, plugs } =
     "<script src='/bits.js' type='text/javascript'></script>" ^
     divc "search-form" (searchForm queryParams ptag) ^
     divc "platform-selector" (platformSelector queryParams ptag) ^
+    if search == "" then
+        fhtml = renderFeaturedPlugin ptag;
+        if fhtml != "" then
+            divc "featured"
+               ("<h3>Currently featured</h3>" ^ renderFeaturedPlugin ptag) ^
+            "<h3>All plugins</h3>"
+        else
+            ""
+        fi
+    else 
+        "" 
+    fi ^
     pluginList);
 
 
