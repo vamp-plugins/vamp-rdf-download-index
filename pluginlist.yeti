@@ -1,18 +1,19 @@
 
 program pluginlist;
 
+import java.util: Calendar, GregorianCalendar;
+
 { route, esc, link, urlOf, divc, divid, elt, eltid, span, spanid, staticFileLocation } = load spag;
 
 store = load yertle.store;
 property = load yertle.property;
+read = load yertle.read;
 vamprdf = load may.vamp.vamprdf;
 
 downloadPageRoute = "/download.html";
 
 pluginStore = store.newRdfStore ();
 vamprdf.loadSystemVampRdf pluginStore;
-
-featured = "silvet:silvet";
 
 knownPlatforms = mapIntoHash id id [
     "linux32", "linux64", "win32", "osx", "other"
@@ -21,6 +22,27 @@ knownPlatforms = mapIntoHash id id [
 vamPyPlatforms = mapIntoHash id id [
     "linux32", "linux64", "win32", "osx"
 ];
+
+featured = concat
+   (matches = pluginStore.match {
+        s = Wildcard (), 
+        p = Known (pluginStore.expand "vamp:has_featured_plugin"), 
+        o = Wildcard ()
+    };
+    if empty? matches then
+        eprintln "** WARNING: No vamp:has_featured_plugin list found";
+        []
+    else
+        map do m:
+           case m.o of
+           Literal { value = v }: [v];
+           _:
+               eprintln "** WARNING: featured plugin node \(m.o) is not a literal as expected (was looking for soname:id key string here)";
+               [];
+           esac
+           done
+           matches
+    fi);
 
 platformTag { headers, queryParams } =
     // The returned value is safe text -- always one of a fixed set of
@@ -376,26 +398,35 @@ pluginHtmlFragments ptag processed descriptor =
         data = pd,
     });
 
+pickFeaturedPlugin () =
+    if empty? featured then ""
+    else
+        day = (new GregorianCalendar())#get(Calendar#DAY_OF_YEAR);
+        ix = day % (length featured);
+        (array featured)[ix];
+    fi;
+
 renderFeaturedPlugin ptag =
-    if featured != "" then
-        case vamprdf.pluginDataByKey pluginStore featured of
+   (fplugin = pickFeaturedPlugin ();
+    if fplugin != "" then
+        case vamprdf.pluginDataByKey pluginStore fplugin of
         Some plug:
             case platformStatus ptag plug of
             Available ():
                 fragments = pluginHtmlFragments ptag id plug;
                 renderLibraryList false [fragments];
             _:
-                eprintln "**    note: featured plugin \"\(featured)\" may not be available for platform \"\(ptag)\", skipping";
+                eprintln "**    note: featured plugin \"\(fplugin)\" may not be available for platform \"\(ptag)\", skipping";
                 "";
             esac;
         None ():
-            eprintln "** WARNING: featured plugin key \"\(featured)\" not found";
+            eprintln "** WARNING: featured plugin key \"\(fplugin)\" not found";
             "";
         esac;
     else
         eprintln "**    note: no featured plugin defined";
         "";
-    fi;
+    fi);
 
 renderPluginList { queryParams, search, ptag, plugs } =
    (processed = (highlighted search) . esc;
