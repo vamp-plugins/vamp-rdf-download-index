@@ -130,7 +130,7 @@ textSearchScore search =
     done);
 
 pluginSearchScore search plugin =
-   (scorer = textSearchScore search;
+   (score = (scorer = textSearchScore search;
     3 * scorer plugin.name +
     2 * scorer plugin.library.name +
     scorer plugin.description +
@@ -143,12 +143,20 @@ pluginSearchScore search plugin =
         if scorer out.name > 0 or scorer out.description > 0 then 1
         else acc fi
         done 0 plugin.outputs);
+    score);
 
 filterPlugins search ptag plugins =
    (found = 
         if strLength search < 2 then []
         else
-            scorer = pluginSearchScore search;
+            scorer p =
+                pluginSearchScore search p +
+                    if strLength search > 3 and strEnds? search "s" then
+                        pluginSearchScore
+                           (strLeft search (strLength search - 1)) p
+                        / 2
+                    else 0
+                    fi;
             results = concatMap do p:
                 score = scorer p;
                 if score > 0 then
@@ -161,7 +169,8 @@ filterPlugins search ptag plugins =
                     []
                 fi
                 done plugins;
-            map (.p) (sortBy do a b: a.score > b.score done results)
+            sorted = sortBy do a b: a.score > b.score done results;
+            map (.p) sorted
         fi;
     // Now produce a list of the found plugins, in the same order, but
     // with plugins from the same library grouped together (at the
