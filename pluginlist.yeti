@@ -422,13 +422,26 @@ pickFeaturedPlugin ptag =
         Some available[ix];
     fi);
 
-renderFeaturedPlugin ptag =
+pickFeaturedLibrary ptag =
     case pickFeaturedPlugin ptag of
-    Some plug: 
-        fragments = pluginHtmlFragments ptag id plug;
-        renderLibraryList false [fragments];
-    _: "";
+    Some plug:
+        // Get all plugins for this library, so that it shows them all
+        // when expanded
+        libname = plug.library.soname;
+        concat (map do p:
+            if p.library.soname == libname then [p]
+            else []
+            fi
+        done pluginData);
+    None ():
+        []
     esac;
+
+renderFeaturedPlugin ptag =
+   (plugs = pickFeaturedLibrary ptag;
+    if empty? plugs then "";
+    else renderLibraryList false (map (pluginHtmlFragments ptag id) plugs);
+    fi);
 
 renderPluginList { queryParams, search, ptag, plugs } =
    (processed = (highlighted search) . esc;
