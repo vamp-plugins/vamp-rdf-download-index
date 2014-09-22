@@ -139,6 +139,7 @@ pluginSearchScore search plugin =
     scorer plugin.library.description +
     scorer plugin.library.soname +
     scorer plugin.maker +
+    scorer plugin.identifier +
     fold do acc cat: acc + scorer cat done 0 plugin.category +
     fold do acc out:
         if scorer out.name > 0 or scorer out.description > 0 then 1
