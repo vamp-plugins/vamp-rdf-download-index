@@ -398,35 +398,37 @@ pluginHtmlFragments ptag processed descriptor =
         data = pd,
     });
 
-pickFeaturedPlugin () =
-    if empty? featured then ""
+pickFeaturedPlugin ptag =
+   (available = array (concat
+       (map do fp:
+            case vamprdf.pluginDataByKey pluginStore fp of
+            Some plug:
+                case platformStatus ptag plug of
+                Available (): [plug];
+                _: [];
+                esac;
+            _:
+                eprintln "** WARNING: featured plugin key \"\(fp)\" not found";
+                [];
+            esac
+        done featured));
+    if empty? available 
+    then
+        eprintln "**    note: no featured plugin available for this platform";
+        None ();
     else
         day = (new GregorianCalendar())#get(Calendar#DAY_OF_YEAR);
-        ix = day % (length featured);
-        (array featured)[ix];
-    fi;
+        ix = day % (length available);
+        Some available[ix];
+    fi);
 
 renderFeaturedPlugin ptag =
-   (fplugin = pickFeaturedPlugin ();
-    if fplugin != "" then
-        case vamprdf.pluginDataByKey pluginStore fplugin of
-        Some plug:
-            case platformStatus ptag plug of
-            Available ():
-                fragments = pluginHtmlFragments ptag id plug;
-                renderLibraryList false [fragments];
-            _:
-                eprintln "**    note: featured plugin \"\(fplugin)\" may not be available for platform \"\(ptag)\", skipping";
-                "";
-            esac;
-        None ():
-            eprintln "** WARNING: featured plugin key \"\(fplugin)\" not found";
-            "";
-        esac;
-    else
-        eprintln "**    note: no featured plugin defined";
-        "";
-    fi);
+    case pickFeaturedPlugin ptag of
+    Some plug: 
+        fragments = pluginHtmlFragments ptag id plug;
+        renderLibraryList false [fragments];
+    _: "";
+    esac;
 
 renderPluginList { queryParams, search, ptag, plugs } =
    (processed = (highlighted search) . esc;
