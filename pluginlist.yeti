@@ -214,17 +214,12 @@ sortPlugins =
         esac
     done);
 
-iriIdMap = [:];
-var iriIdNext = 0;
-
-divIdFor iri =
-   synchronized iriIdMap do:
-       if not iri in iriIdMap then
-           iriIdMap[iri] := "piri\(iriIdNext)";
-           iriIdNext := iriIdNext + 1;
-       fi;
-       iriIdMap[iri];
-   done;
+nextNumber =
+   (var num = 0;
+      \(synchronized num do:
+            num := num + 1;
+            num;
+        done));
 
 highlighted search text =
    (hlaux search text tlower =
@@ -278,7 +273,7 @@ showHide expanded i =
 renderLibraryPlugins expanded altern plugins =
     case plugins of
     first::rest:
-       (i = divIdFor first.data.pluginNode;
+       (i = nextNumber ();
         defaultShownHidden = 
             if expanded then 'default-shown' else 'default-hidden' fi;
         eltid "li" "library \(altern ())" "lib-\(i)"
