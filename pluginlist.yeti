@@ -1,10 +1,13 @@
 
 program pluginlist;
 
+import java.util: Calendar, GregorianCalendar;
+
 { route, esc, link, urlOf, divc, divid, elt, eltid, span, spanid, staticFileLocation } = load spag;
 
 store = load yertle.store;
 property = load yertle.property;
+read = load yertle.read;
 vamprdf = load may.vamp.vamprdf;
 
 downloadPageRoute = "/download.html";
@@ -19,6 +22,27 @@ knownPlatforms = mapIntoHash id id [
 vamPyPlatforms = mapIntoHash id id [
     "linux32", "linux64", "win32", "osx"
 ];
+
+featured = concat
+   (matches = pluginStore.match {
+        s = Wildcard (), 
+        p = Known (pluginStore.expand "vamp:has_featured_plugin"), 
+        o = Wildcard ()
+    };
+    if empty? matches then
+        eprintln "** WARNING: No vamp:has_featured_plugin list found";
+        []
+    else
+        map do m:
+           case m.o of
+           Literal { value = v }: [v];
+           _:
+               eprintln "** WARNING: featured plugin node \(m.o) is not a literal as expected (was looking for soname:id key string here)";
+               [];
+           esac
+           done
+           matches
+    fi);
 
 platformTag { headers, queryParams } =
     // The returned value is safe text -- always one of a fixed set of
@@ -199,17 +223,12 @@ sortPlugins =
         esac
     done);
 
-iriIdMap = [:];
-var iriIdNext = 0;
-
-divIdFor iri =
-   synchronized iriIdMap do:
-       if not iri in iriIdMap then
-           iriIdMap[iri] := "piri\(iriIdNext)";
-           iriIdNext := iriIdNext + 1;
-       fi;
-       iriIdMap[iri];
-   done;
+nextNumber =
+   (var num = 0;
+      \(synchronized num do:
+            num := num + 1;
+            num;
+        done));
 
 highlighted search text =
    (hlaux search text tlower =
@@ -263,7 +282,7 @@ showHide expanded i =
 renderLibraryPlugins expanded altern plugins =
     case plugins of
     first::rest:
-       (i = divIdFor first.data.pluginNode;
+       (i = nextNumber ();
         defaultShownHidden = 
             if expanded then 'default-shown' else 'default-hidden' fi;
         eltid "li" "library \(altern ())" "lib-\(i)"
@@ -317,74 +336,120 @@ searchForm queryParams ptag =
     "<input type='submit' name='clear' value='Clear'>\n" ^
     "</form>\n");
 
-renderPluginList { queryParams, search, ptag, plugs } =
+pluginHtmlFragments ptag processed descriptor =
    (pname = platformName ptag;
-    processed = (highlighted search) . esc;
     sentence text = strReplace "VAMP" "Vamp"
        (if strEnds? text "." then text else text ^ "." fi);
-    fragments = map do pd:
-        {
-            name = processed pd.name,
-            description =
-                strReplace "\n" "<br>"
-                   (strReplace "\n\n" "\n"
-                       (processed (sentence (strTrim pd.description)))),
-            logo =
-                if pd.makerLogoURL == "" then "" 
-                else
-                    i = "<img border=0 class='maker-logo' src=\"\(pd.makerLogoURL)\">";
-                    if pd.makerInfoURL != "" then link pd.makerInfoURL i
-                    else i
-                    fi
-                fi,
-            libraryLinks = 
-            //!!! separate out, this mingling doesn't help
-                if pd.library.downloadURL != "" then
-                    if pd.library.infoURL != "" then
-                        link pd.library.infoURL "Plugin homepage" ^ "<br>"
-                    else ""
-                    fi ^
-                        link pd.library.downloadURL "Download"
-                elif pd.library.infoURL != "" then
-                    link pd.library.infoURL "Plugin homepage"
+    pd = descriptor;
+    {
+        name = processed pd.name,
+        description =
+            strReplace "\n" "<br>"
+               (strReplace "\n\n" "\n"
+                   (processed (sentence (strTrim pd.description)))),
+        logo =
+            if pd.makerLogoURL == "" then "" 
+            else
+                i = "<img border=0 class='maker-logo' src=\"\(pd.makerLogoURL)\">";
+                if pd.makerInfoURL != "" then link pd.makerInfoURL i
+                else i
+                fi
+            fi,
+        libraryLinks = 
+        //!!! separate out, this mingling doesn't help
+            if pd.library.downloadURL != "" then
+                if pd.library.infoURL != "" then
+                    link pd.library.infoURL "Plugin homepage" ^ "<br>"
                 else ""
+                fi ^
+                    link pd.library.downloadURL "Download"
+            elif pd.library.infoURL != "" then
+                link pd.library.infoURL "Plugin homepage"
+            else ""
+            fi,
+        pluginLinks = 
+            if pd.infoURL != "" then
+                link pd.infoURL "Documentation"
+            else ""
+            fi,
+        libraryName =
+            processed
+                if pd.library.name == "" then pd.library.soname
+                else pd.library.name
                 fi,
-            pluginLinks = 
-                if pd.infoURL != "" then
-                    link pd.infoURL "Documentation"
-                else ""
-                fi,
-            libraryName =
-                processed
-                    if pd.library.name == "" then pd.library.soname
-                    else pd.library.name
-                    fi,
-            libraryDescription = 
-                processed (sentence (strTrim pd.library.description)),
-            makerName = processed pd.maker,
-            availability = 
-                if pname == "" or pname == "Other" then "" 
-                else 
-                    case platformStatus ptag pd of
-                    Available ():
-                        span "availability available" "Available for \(pname)";
-                    MaybeAvailable ():
-                        span "availability maybe-available" "";
-                    Unavailable ():
-                        span "availability unavailable" "Not available for \(pname)";
-                    esac;
-                fi,
-            sourceAvailability = 
-                span "availability"
-                   (if pd.library.source then "With source code" else "No source code" fi),
-            vamPy =
-                span "availability"
-                   (if pd.library.isVamPy then "Requires <a href='http://www.vamp-plugins.org/vampy.html'>VamPy</a>" else "" fi),
-            category = strJoin " &rarr; " (map processed pd.category),
-            data = pd,
-        }
-    done plugs;
+        libraryDescription = 
+            processed (sentence (strTrim pd.library.description)),
+        makerName = processed pd.maker,
+        availability = 
+            if pname == "" or pname == "Other" then "" 
+            else 
+                case platformStatus ptag pd of
+                Available ():
+                    span "availability available" "Available for selected platform";
+                MaybeAvailable ():
+                    span "availability maybe-available" "";
+                Unavailable ():
+                    span "availability unavailable" "Not available for selected platform";
+                esac;
+            fi,
+        sourceAvailability = 
+            span "availability"
+               (if pd.library.source then "With source code" else "No source code" fi),
+        vamPy =
+            span "availability"
+               (if pd.library.isVamPy then "Requires <a href='http://www.vamp-plugins.org/vampy.html'>VamPy</a>" else "" fi),
+        category = strJoin " &rarr; " (map processed pd.category),
+        data = pd,
+    });
 
+pickFeaturedPlugin ptag =
+   (available = array (concat
+       (map do fp:
+            case vamprdf.pluginDataByKey pluginStore fp of
+            Some plug:
+                case platformStatus ptag plug of
+                Available (): [plug];
+                _: [];
+                esac;
+            _:
+                eprintln "** WARNING: featured plugin key \"\(fp)\" not found";
+                [];
+            esac
+        done featured));
+    if empty? available 
+    then
+        eprintln "**    note: no featured plugin available for this platform";
+        None ();
+    else
+        day = (new GregorianCalendar())#get(Calendar#DAY_OF_YEAR);
+        ix = day % (length available);
+        Some available[ix];
+    fi);
+
+pickFeaturedLibrary ptag =
+    case pickFeaturedPlugin ptag of
+    Some plug:
+        // Get all plugins for this library, so that it shows them all
+        // when expanded
+        libname = plug.library.soname;
+        concat (map do p:
+            if p.library.soname == libname then [p]
+            else []
+            fi
+        done pluginData);
+    None ():
+        []
+    esac;
+
+renderFeaturedPlugin ptag =
+   (plugs = pickFeaturedLibrary ptag;
+    if empty? plugs then "";
+    else renderLibraryList false (map (pluginHtmlFragments ptag id) plugs);
+    fi);
+
+renderPluginList { queryParams, search, ptag, plugs } =
+   (processed = (highlighted search) . esc;
+    fragments = map (pluginHtmlFragments ptag processed) plugs;
     pluginList = 
         if not empty? fragments then
             divc "pluginlist"
@@ -393,10 +458,21 @@ renderPluginList { queryParams, search, ptag, plugs } =
             divc "no-results"
                (elt "p" "" "No results found");
         fi;
-
     "<script src='/bits.js' type='text/javascript'></script>" ^
     divc "search-form" (searchForm queryParams ptag) ^
     divc "platform-selector" (platformSelector queryParams ptag) ^
+    if search == "" then
+        fhtml = renderFeaturedPlugin ptag;
+        if fhtml != "" then
+            divc "featured"
+               ("<h3>Currently featured</h3>" ^ renderFeaturedPlugin ptag) ^
+            "<h3>All plugins</h3>"
+        else
+            ""
+        fi
+    else 
+        "" 
+    fi ^
     pluginList);
 
 
