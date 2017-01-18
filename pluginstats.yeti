@@ -28,7 +28,11 @@ guessStructure od =
    (noteIRI = case pluginStore.expand "af:Note" of IRI iri: iri; _: "" esac;
     denseTypeIRI = case pluginStore.expand "vamp:DenseOutput" of IRI iri: iri; _: "" esac;
     case od.binCount of
-    Known 0: Instants ();
+    Known 0:
+        if od.rdfType == denseTypeIRI
+        then Series () // binCount must be wrong!
+        else Instants ()
+        fi;
     Known 1:
         case od.computes of
         Event e:
@@ -63,10 +67,27 @@ formatComputes =
 
 println "|*Library*|*Plugin*|*Output*|*Declared RDF Type*|*Guessed Structure*|";
 
+distinctDeclared = [:];
+distinctGuessed = [:];
+
+cutNils = strReplace " []" "";
+
 for pluginData do pd:
     for pd.outputs do od:
-        row = "|\(pd.library.name)|\(pd.name)|\(od.name)|\(formatComputes od.computes)|\(guessStructure od)|";
-        println (strReplace " []" "" row);
+        declared = formatComputes od.computes;
+        guessed = guessStructure od;
+        distinctDeclared[string declared] := true;
+        distinctGuessed[string guessed] := true;
+        row = "|\(pd.library.name)|\(pd.name)|\(od.name)|\(declared)|\(guessed)|";
+        println (cutNils row);
     done
-done
-    
+done;
+
+printKeys d =
+   for (sort (keys d)) do t: println (cutNils "|\(t)|") done;
+
+println "\n|*Distinct declared RDF types*|";
+printKeys (distinctDeclared);
+
+println "\n|*Distinct guessed structures*|";
+printKeys (distinctGuessed);
