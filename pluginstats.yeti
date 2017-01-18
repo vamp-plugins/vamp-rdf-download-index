@@ -1,0 +1,72 @@
+
+program pluginstats;
+
+// NB Make sure the correct RDF files are in the path!
+// e.g. VAMP_PATH=./rdf/plugins ~/code/may/bin/yc ./pluginstats.yeti
+
+store = load yertle.store;
+vamprdf = load may.vamp.vamprdf;
+
+pluginStore = store.newRdfStore ();
+vamprdf.loadSystemVampRdf pluginStore;
+
+sortPlugins =
+   (props = map (strLower .) [ (.library.name), (.maker), (.name) ];
+    sortBy do a b:
+        case (find do prop: prop a != prop b done props) of
+        prop::_: prop a < prop b;
+        _: false;
+        esac
+    done);
+
+pluginData = sortPlugins
+    (map (vamprdf.pluginDataByNode pluginStore)
+         (vamprdf.allPluginNodes pluginStore));
+
+// based on structureOf in vamp.yeti
+guessStructure od = 
+   (noteIRI = case pluginStore.expand "af:Note" of IRI iri: iri; _: "" esac;
+    denseTypeIRI = case pluginStore.expand "vamp:DenseOutput" of IRI iri: iri; _: "" esac;
+    case od.binCount of
+    Known 0: Instants ();
+    Known 1:
+        case od.computes of
+        Event e:
+            if strEnds? e "Segment" 
+            then Segmentation ()
+            else Curve ()
+            fi;
+        _:
+            if od.rdfType == denseTypeIRI
+            then Series ()
+            else Curve ()
+            fi;
+        esac;
+    Known n:
+        if od.rdfType == denseTypeIRI then Grid () 
+        elif od.computes == Event noteIRI then Notes ()
+        elif od.valueUnit == "Hz" or strIndexOf (strLower od.valueUnit) "midi" 0 >= 0 then Notes ()
+        else Unknown () //!!! would like to emit Regions () if we had duration
+        fi;
+    Unknown _:
+        Unknown ();
+    esac);
+
+formatComputes =
+   (abbr s = pluginStore.abbreviate (IRI s);
+    \case of
+    Event s: Event (abbr s);
+    Feature s: Feature (abbr s);
+    Signal s: Signal (abbr s);
+    Unknown (): Unknown ()
+    esac);
+
+println "|*Library*|*Plugin*|*Output*|*Declared RDF Type*|*Guessed Structure*|";
+
+for pluginData do pd:
+    for pd.outputs do od:
+        row = "|\(pd.library.name)|\(pd.name)|\(od.name)|\(formatComputes od.computes)|\(guessStructure od)|";
+        println (strReplace " []" "" row);
+    done
+done
+    
