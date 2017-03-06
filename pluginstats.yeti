@@ -36,14 +36,17 @@ guessStructure od =
     Known 1:
         case od.computes of
         Event e:
-            if strEnds? e "Segment" 
-            then Segmentation ()
+            if e == noteIRI then Notes ()
+            elif strEnds? e "Segment" then Segmentation ()
             else Curve ()
             fi;
         _:
             if od.rdfType == denseTypeIRI
             then Series ()
-            else Curve ()
+            else
+                if od.valueUnit == "Hz" or strIndexOf (strLower od.valueUnit) "midi" 0 >= 0 then Notes ()
+                else Curve ()
+                fi
             fi;
         esac;
     Known n:
