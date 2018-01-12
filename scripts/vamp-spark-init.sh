@@ -20,6 +20,9 @@ start() {
 	    echo "Root dir $rootdir not found" ; return 1
 	fi
     fi
+    if [ -f "$logfile" ]; then
+        echo "*** Restarting at $(date)" >> "$logfile"
+    fi
     ( cd "$rootdir" && ./scripts/run.sh >> "$logfile" 2>&1 & ) || return 1
 }    
 
