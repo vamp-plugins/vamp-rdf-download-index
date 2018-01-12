@@ -2,3 +2,8 @@ syntax: glob
 *.class
 *~
 log/
+.vext-*.bin
+spark
+piper
+public
+rdf

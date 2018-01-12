@@ -1,0 +1,37 @@
+{
+    "config": {
+        "extdir": "."
+    },
+    "services": {
+	"soundsoftware": {
+	    "vcs": ["hg", "git"],
+	    "anonymous": "https://code.soundsoftware.ac.uk/{vcs}/{repository}",
+	    "authenticated": "https://{account}@code.soundsoftware.ac.uk/{vcs}/{repository}"
+	}
+    },
+    "libraries": {
+        "spark": {
+            "vcs": "git",
+            "service": "github",
+            "owner": "perwendel",
+            "pin": "f1f06769abacc6732e511774d4db2306cbe5db54"
+        },
+        "public": {
+            "vcs": "hg",
+            "service": "soundsoftware",
+            "repository": "vamp-website",
+            "branch": "website"
+        },
+        "rdf": {
+            "vcs": "hg",
+            "service": "soundsoftware",
+            "repository": "vamp-known-plugins-rdf"
+        },
+        "piper": {
+            "vcs": "git",
+            "service": "github",
+            "owner": "piper-audio"
+        }            
+    }
+}
+

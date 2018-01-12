@@ -1,5 +1,0 @@
-spark = [git]https://github.com/perwendel/spark.git
-public = https://code.soundsoftware.ac.uk/hg/vamp-website
-forum = https://code.soundsoftware.ac.uk/hg/vamp-website-forum
-rdf = https://code.soundsoftware.ac.uk/hg/vamp-known-plugins-rdf
-piper = https://code.soundsoftware.ac.uk/hg/piper

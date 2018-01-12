@@ -1,4 +1,0 @@
-[submodule "spark"]
-	path = spark
-	url = https://github.com/perwendel/spark.git
-

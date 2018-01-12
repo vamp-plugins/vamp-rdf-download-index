@@ -1,0 +1,16 @@
+{
+  "libraries": {
+    "spark": {
+      "pin": "f1f06769abacc6732e511774d4db2306cbe5db54"
+    },
+    "public": {
+      "pin": "7e14f729664d"
+    },
+    "rdf": {
+      "pin": "a1dd981a7ea8"
+    },
+    "piper": {
+      "pin": "1beb47e41a2a02d75d0fb9204e1b7b95440f3ceb"
+    }
+  }
+}
