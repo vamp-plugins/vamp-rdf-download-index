@@ -2,7 +2,7 @@ syntax: glob
 *.class
 *~
 log/
-.vext-*.bin
+.repoint-*.bin
 spark
 piper
 public
