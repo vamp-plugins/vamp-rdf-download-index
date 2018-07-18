@@ -43,23 +43,23 @@
 
       <p>A Vamp plugin set consists of a single dynamic library file
       with <code>DLL</code>, <code>.dylib</code>, or <code>.so</code>
-      extension (depending on your platform) plus optionally a category
+      extension (depending on your platform), plus optionally a category
       file with <code>.cat</code> extension and an RDF description file
       with <code>.ttl</code> or <code>.n3</code> extension.</p>
 
-      <p>To install a plugin set, just copy the plugin's library file
-      and any supplied category or RDF files into your system or
-      personal Vamp plugin location.</p>
+      <p>To install a plugin set, copy the plugin's library file and
+      any supplied category or RDF files into your system or personal
+      Vamp plugin location.</p>
 
       <p>The plugin file extension and the location to
-      copy into depend on your platform:</p>
+      copy into depend on which operating system you are using:</p>
 
       <table align=center border=1 cellpadding=5>
-      <tr><td>&nbsp;</td><td><b>File extension</b></td><td><b>System plugin folder</b></td><td><b>Personal plugin folder</b></td></tr>
-      <tr><td>Linux or other Unix</td><td><code>.so</code></td><td><code>/usr/local/lib/vamp</code></td><td><code>$HOME/vamp</code></td></tr>
-      <tr><td>OS/X</td><td><code>.dylib</code></td><td><code>/Library/Audio/Plug-Ins/Vamp</code></td><td><code>$HOME/Library/Audio/Plug-Ins/Vamp</code></td></tr>
-      <tr><td>Windows (32-bit)</td><td><code>.dll</code></td><td><code>C:\Program Files\Vamp Plugins</code></td><td>&nbsp;</td></tr>
-      <tr><td>Windows (64-bit)</td><td><code>.dll</code></td><td><code>C:\Program Files (x86)\Vamp Plugins</code></td><td>&nbsp;</td></tr>
+        <tr><td><b>Your operating system</b></td><td><b>File extension for plugins</b></td><td><b>Where to put the plugin files</b></td></tr>
+        <tr><td><b>64-bit Windows</b></td><td><code>.dll</code></td><td><ul><li>Put 64-bit plugins in <code>C:\Program Files\Vamp Plugins</code></li><li>Put 32-bit plugins in <code>C:\Program Files (x86)\Vamp Plugins</code></li><li>If a plugin package is not described as 64-bit, then it is a 32-bit plugin. Most current plugins are 32-bit. Both can be used, if you put them in the right places.</li></ul></td></tr>
+        <tr><td><b>32-bit Windows</b></td><td><code>.dll</code></td><td><ul><li>Put 32-bit plugins in <code>C:\Program Files\Vamp Plugins</code></li><li>If a plugin package is not described as 64-bit, then it is a 32-bit plugin. Most current plugins are 32-bit. Only 32-bit plugins can be used on 32-bit Windows.</li></ul></td></tr>
+        <tr><td><b>macOS</b></td><td><code>.dylib</code></td><td><ul><li>Put plugins for all users to use in <code>/Library/Audio/Plug-Ins/Vamp</code></li><li>Put plugins for the current user only in <code>$HOME/Library/Audio/Plug-Ins/Vamp</code></li><li>The <code>Library</code> folders are hidden by default; see <a href="http://osxdaily.com/2016/12/12/show-user-library-folder-macos-sierra/">here</a> for details of how to show them</li></ul></td></tr>
+        <tr><td><b>Linux, other Unix</b></td><td><code>.so</code></td><td><ul><li>Put plugins for all users to use in <code>/usr/local/lib/vamp</code></li><li>Put plugins for the current user only in <code>$HOME/vamp</code></li></ul></td></tr>
       </table>
 
       <p>You can alternatively set the <code>VAMP_PATH</code>
