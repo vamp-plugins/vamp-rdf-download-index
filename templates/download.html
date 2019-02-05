@@ -42,7 +42,7 @@
       <a name="install"></a><h3>How to Install</h3>
 
       <p>A Vamp plugin set consists of a single dynamic library file
-      with <code>DLL</code>, <code>.dylib</code>, or <code>.so</code>
+      with <code>.dll</code>, <code>.dylib</code>, or <code>.so</code>
       extension (depending on your platform), plus optionally a category
       file with <code>.cat</code> extension and an RDF description file
       with <code>.ttl</code> or <code>.n3</code> extension.</p>
@@ -56,20 +56,21 @@
 
       <table align=center border=1 cellpadding=5>
         <tr><td><b>Your operating system</b></td><td><b>File extension for plugins</b></td><td><b>Where to put the plugin files</b></td></tr>
-        <tr><td><b>64-bit Windows</b></td><td><code>.dll</code></td><td><ul><li>Put 64-bit plugins in <code>C:\Program Files\Vamp Plugins</code></li><li>Put 32-bit plugins in <code>C:\Program Files (x86)\Vamp Plugins</code></li><li>If a plugin package is not described as 64-bit, then it is a 32-bit plugin. Most current plugins are 32-bit. Both can be used, if you put them in the right places.</li></ul></td></tr>
-        <tr><td><b>32-bit Windows</b></td><td><code>.dll</code></td><td><ul><li>Put 32-bit plugins in <code>C:\Program Files\Vamp Plugins</code></li><li>If a plugin package is not described as 64-bit, then it is a 32-bit plugin. Most current plugins are 32-bit. Only 32-bit plugins can be used on 32-bit Windows.</li></ul></td></tr>
-        <tr><td><b>macOS</b></td><td><code>.dylib</code></td><td><ul><li>Put plugins for all users to use in <code>/Library/Audio/Plug-Ins/Vamp</code></li><li>Put plugins for the current user only in <code>$HOME/Library/Audio/Plug-Ins/Vamp</code></li><li>The <code>Library</code> folders are hidden by default; see <a href="http://osxdaily.com/2016/12/12/show-user-library-folder-macos-sierra/">here</a> for details of how to show them</li></ul></td></tr>
-        <tr><td><b>Linux, other Unix</b></td><td><code>.so</code></td><td><ul><li>Put plugins for all users to use in <code>/usr/local/lib/vamp</code></li><li>Put plugins for the current user only in <code>$HOME/vamp</code></li></ul></td></tr>
+        <tr><td><b>macOS</b></td><td><code>.dylib</code></td><td>On a Mac:<ul><li>Put plugins for all users to use in <code>/Library/Audio/Plug-Ins/Vamp</code></li><li>Put plugins for only the current user in <code>$HOME/Library/Audio/Plug-Ins/Vamp</code></li><li>The <code>Library</code> folders are hidden by default; see <a href="http://osxdaily.com/2016/12/12/show-user-library-folder-macos-sierra/">here</a> for details of how to show them</li></ul></td></tr>
+        <tr><td><b>64-bit Windows</b></td><td><code>.dll</code></td><td>When using a 64-bit version of Windows:<ul><li>Put 32-bit plugins in <code>C:\Program Files (x86)\Vamp Plugins</code></li><li>Put 64-bit plugins in <code>C:\Program Files\Vamp Plugins</code></li><li>Both 32-bit and 64-bit plugins can be used, as long as you put them in the right places as above</li><li>If a plugin package is not described as 64-bit, then it is a 32-bit plugin. Some older plugins were only published in 32-bit form.</li></ul></td></tr>
+        <tr><td><b>32-bit Windows</b></td><td><code>.dll</code></td><td>When using a 32-bit version of Windows:<ul><li>Put 32-bit plugins in <code>C:\Program Files\Vamp Plugins</code></li><li>You cannot use 64-bit plugins at all on 32-bit Windows</li><li>If a plugin package is not described as 64-bit, then it is a 32-bit plugin. Some older plugins were only published in 32-bit form.</li></ul></td></tr>
+        <tr><td><b>Linux, other Unix</b></td><td><code>.so</code></td><td>On Linux, BSD systems, etc: <ul><li>Put plugins for all users to use in <code>/usr/local/lib/vamp</code></li><li>Put plugins for only the current user in <code>$HOME/vamp</code></li><li>Only plugins with the correct architecture can be used (32-bit plugins on 32-bit systems, and 64-bit on 64-bit).</ul></td></tr>
       </table>
 
       <p>You can alternatively set the <code>VAMP_PATH</code>
-      environment variable to list the locations a host should look in
-      for Vamp plugins.</p>
-
-      <p><code>VAMP_PATH</code> should contain a semicolon-separated
-      (on Windows) or colon-separated (OS/X, Linux) list of paths.  If
-      it is set, it will completely override the standard locations
-      listed above.</p>
+      environment variable to override the search path for for Vamp
+      plugins. <code>VAMP_PATH</code> should contain a
+      semicolon-separated (on Windows) or colon-separated (macOS,
+      Linux) list of directory locations.  If it is set, it will
+      completely override the standard locations listed
+      above. (N.B. When using 32-bit plugins on 64-bit Windows, some
+      hosts will check for the <code>VAMP_PATH_32</code> environment
+      variable instead of <code>VAMP_PATH</code>.)</p>
 
     </body>
 </html>
