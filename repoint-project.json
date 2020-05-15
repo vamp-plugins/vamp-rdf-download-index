@@ -32,7 +32,7 @@
             "vcs": "git",
             "service": "github",
             "owner": "perwendel",
-            "pin": "f1f06769abacc6732e511774d4db2306cbe5db54"
+            "pin": "2.9.1"
         },
         "public": {
             "vcs": "hg",

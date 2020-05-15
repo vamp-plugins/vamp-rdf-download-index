@@ -6,8 +6,8 @@ import spark: Request, Response, Route, Spark;
 import org.apache.commons.lang: StringEscapeUtils;
 
 route match callback =
-   (handler path callback =
-       (class Handler extends Route(path)
+   (handler callback =
+       (class Handler extends Route
             Object handle(Request req, Response resp)
                 routeParams = customHash \(req#params());
                 queryParams = mapIntoHash id do p: req#queryParams(p) done
@@ -20,8 +20,8 @@ route match callback =
         new Handler());
     case match of
     Get path: 
-        h = handler path callback;
-        Spark#get(h);
+        h = handler callback;
+        Spark#get(path, h);
     esac);
 
 staticFileLocation path =
