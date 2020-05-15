@@ -1,5 +1,17 @@
 {
   "libraries": {
+    "yeti": {
+      "pin": "72eb69c709f4f0ee5ae55cee9f08f9cec3b58484"
+    },
+    "yertle": {
+      "pin": "37945a273d0c"
+    },
+    "jvamp": {
+      "pin": "2b8e1416327d"
+    },
+    "may": {
+      "pin": "956074cc1f7c"
+    },
     "spark": {
       "pin": "f1f06769abacc6732e511774d4db2306cbe5db54"
     },
@@ -7,7 +19,7 @@
       "pin": "730506765304"
     },
     "rdf": {
-      "pin": "31f00b5e3a5f"
+      "pin": "e6ff5aa79370"
     },
     "piper": {
       "pin": "3a742c556ac1f2bf9823f30b937c71c690e1f6ae"
