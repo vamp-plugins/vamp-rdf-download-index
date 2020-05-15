@@ -6,8 +6,6 @@ import java.util: Calendar, GregorianCalendar;
 { route, esc, link, urlOf, divc, divid, elt, eltid, span, spanid, staticFileLocation } = load spag;
 
 store = load yertle.store;
-property = load yertle.property;
-read = load yertle.read;
 vamprdf = load may.vamp.vamprdf;
 
 downloadPageRoute = "/download.html";
@@ -43,6 +41,67 @@ featured = concat
            done
            matches
     fi);
+
+subjects = map (.s);
+objects = map (.o);
+
+iriTypes =
+    map do t:
+        case t of
+        IRI iri: IRI iri;
+        Blank n: Blank n;
+        Literal lit: failWith "Unexpected literal \"\(lit)\" in subject!";
+        esac done;
+
+iriSubjects = iriTypes . subjects;
+iriObjects = iriTypes . objects;
+iriObject nodes = head (iriObjects nodes);
+
+literalType =
+    map do t:
+        case t of
+        IRI iri: failWith "Unexpected iri \"\(iri)\"!";
+        Blank n: failWith "Unexpected blank node \"\(n)\"!";
+        Literal lit: lit;
+        esac done;
+
+literalObjects = literalType . objects;
+literalObject nodes = head (literalObjects nodes);
+
+packLists = // map from plugin node to list of pack { name, url }
+    (packs = iriSubjects (pluginStore.match {
+         s = Wildcard (),
+         p = Known (pluginStore.expand "a"),
+         o = Known (pluginStore.expand "vamp:PluginPack")
+         });
+     packsForNode pnode =
+        (lib = head (iriSubjects (pluginStore.match {
+             s = Wildcard (),
+             p = Known (pluginStore.expand "vamp:available_plugin"),
+             o = Known pnode
+             }));
+         packsNodesWithLib = concatMap do pack:
+             if pluginStore.contains {
+                   s = pack,
+                   p = pluginStore.expand "vamp:available_library",
+                   o = lib
+                }
+             then [pack]
+             else []
+             fi done packs;
+         map do packNode:
+             { name = (literalObject (pluginStore.match {
+                 s = Known packNode,
+                 p = Known (pluginStore.expand "dc:title"),
+                 o = Wildcard ()
+                 })).value,
+               url = case iriObject (pluginStore.match {
+                 s = Known packNode,
+                 p = Known (pluginStore.expand "foaf:page"),
+                 o = Wildcard ()
+                 }) of IRI iri: iri; Blank n: failWith "Blank node not allowed for download URL" esac };
+         done packsNodesWithLib);
+     mapIntoHash id packsForNode (vamprdf.allPluginNodes pluginStore));
 
 platformTag { headers, queryParams } =
     // The returned value is safe text -- always one of a fixed set of
@@ -263,9 +322,6 @@ groupByLibrary = groupBy
         fi 
     done;
 
-renderSearchResult fragment =
-    fragment.logo ^ fragment.libraryName ^ fragment.name;
-
 alternator classbase =
    (var prev = false;
       \(synchronized prev do:
@@ -295,6 +351,7 @@ renderLibraryPlugins expanded altern plugins =
                    (divc "library-availability" first.availability ^
                     divc "library-vampy" first.vamPy ^
                     divc "library-source-availability" first.sourceAvailability ^
+                    divc "library-availability" first.inPacks ^
                     divc "library-links" first.libraryLinks) ^
                 divc "library-main"
                    (divc "library-description" first.libraryDescription ^
@@ -395,9 +452,16 @@ pluginHtmlFragments ptag processed descriptor =
         sourceAvailability = 
             span "availability"
                (if pd.library.source then "With source code" else "No source code" fi),
+        inPacks = 
+            case packLists[pd.pluginNode] of
+            []: "";
+            packs: strJoin "<br>" (map do p:
+                span "pack" "Included in <a href='\(p.url)'>\(p.name)</a>"
+                done packs);
+            esac,
         vamPy =
             span "availability"
-               (if pd.library.isVamPy then "Requires <a href='http://www.vamp-plugins.org/vampy.html'>VamPy</a>" else "" fi),
+               (if pd.library.isVamPy then "Requires <a href='https://www.vamp-plugins.org/vampy.html'>VamPy</a>" else "" fi),
         category = strJoin " &rarr; " (map processed pd.category),
         data = pd,
     });
