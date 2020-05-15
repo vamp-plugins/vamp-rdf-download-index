@@ -10,6 +10,24 @@
 	}
     },
     "libraries": {
+        "yeti": {
+            "vcs": "git",
+            "service": "github",
+            "owner": "mth"
+        },
+        "yertle": {
+            "vcs": "hg",
+            "service": "sourcehut",
+            "owner": "cannam"
+        },
+        "jvamp": {
+            "vcs": "hg",
+            "service": "soundsoftware"
+        },
+        "may": {
+            "vcs": "hg",
+            "service": "soundsoftware"
+        },
         "spark": {
             "vcs": "git",
             "service": "github",
