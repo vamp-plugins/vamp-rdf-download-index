@@ -1,7 +1,7 @@
 {
   "libraries": {
     "yeti": {
-      "pin": "72eb69c709f4f0ee5ae55cee9f08f9cec3b58484"
+      "pin": "fdd0940a63ff3e09998a1088112e15837adbe6cc"
     },
     "yertle": {
       "pin": "37945a273d0c"
@@ -16,7 +16,7 @@
       "pin": "10146d7420169860391c659d31c21b85f9b715b9"
     },
     "public": {
-      "pin": "1982d4ba2ea3"
+      "pin": "817c3988afc7"
     },
     "rdf": {
       "pin": "e6ff5aa79370"
