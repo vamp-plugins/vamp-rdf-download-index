@@ -9,7 +9,7 @@
 
     A simple manager for third-party source code dependencies
 
-    Copyright 2018 Chris Cannam, Particular Programs Ltd,
+    Copyright 2017-2021 Chris Cannam, Particular Programs Ltd,
     and Queen Mary, University of London
 
     Permission is hereby granted, free of charge, to any person
@@ -38,7 +38,7 @@
     authorization.
 *)
 
-val repoint_version = "1.2"
+val repoint_version = "1.3"
 
 
 datatype vcs =
@@ -115,12 +115,20 @@ type account = {
     service : string,
     login : string
 }
-                    
+
+type status_rec = {
+    libname : libname,
+    status : string
+}
+
+type status_cache = status_rec list ref
+                  
 type context = {
     rootpath : string,
     extdir : string,
     providers : provider list,
-    accounts : account list
+    accounts : account list,
+    cache : status_cache
 }
 
 type userconfig = {
@@ -201,6 +209,37 @@ signature LIB_CONTROL = sig
     val is_working : context -> vcs -> bool result
 end
 
+structure StatusCache = struct
+
+    val empty : status_cache = ref []
+
+    fun lookup (lib : libname) (cache : status_cache) : string option =
+        let fun lookup' [] = NONE
+              | lookup' ({ libname, status } :: rs) =
+                if libname = lib
+                then SOME status
+                else lookup' rs
+        in
+            lookup' (! cache)
+        end
+
+    fun drop (lib : libname) (cache : status_cache) : unit =
+        let fun drop' [] = []
+              | drop' ((r as { libname, status }) :: rs) =
+                if libname = lib
+                then rs
+                else r :: drop' rs
+        in
+            cache := drop' (! cache)
+        end
+            
+    fun add (status_rec : status_rec) (cache : status_cache) : unit =
+        let val () = drop (#libname status_rec) cache
+        in
+            cache := status_rec :: (! cache)
+        end
+end
+
 structure FileBits :> sig
     val extpath : context -> string
     val libpath : context -> libname -> string
@@ -218,13 +257,27 @@ structure FileBits :> sig
     val project_lock_path : string -> string
     val project_completion_path : string -> string
     val verbose : unit -> bool
+    val insecure : unit -> bool
 end = struct
 
     fun verbose () =
         case OS.Process.getEnv "REPOINT_VERBOSE" of
             SOME "0" => false
-          | SOME _ => true
           | NONE => false
+          | _ => true
+
+    val insecure_warned = ref false
+			
+    fun insecure () =
+        case OS.Process.getEnv "REPOINT_INSECURE" of
+            SOME "0" => false
+          | NONE => false
+          | _ =>
+	    (if ! insecure_warned (* deref not negate, so "if we have warned" *)
+	     then ()
+	     else (print "Warning: Insecure mode active in environment, skipping security checks\n";
+		   insecure_warned := true);
+	     true)
 
     fun split_relative path desc =
         case OS.Path.fromString path of
@@ -607,7 +660,7 @@ functor LibControlFn (V: VCS_CONTROL) :> LIB_CONTROL = struct
 end
 
 (* Simple Standard ML JSON parser
-   https://bitbucket.org/cannam/sml-simplejson
+   https://hg.sr.ht/~cannam/sml-simplejson
    Copyright 2017 Chris Cannam. BSD licence.
    Parts based on the JSON parser in the Ponyo library by Phil Eaton.
 *)
@@ -915,7 +968,16 @@ structure Json :> JSON = struct
         in
             implode (escape' [] (explode s))
         end
-        
+
+    fun serialiseNumber n =
+        implode (map (fn #"~" => #"-" | c => c)
+                     (explode
+                          (if Real.isFinite n andalso
+                              Real.== (n, Real.realRound n) andalso
+                              Real.<= (Real.abs n, 1e6)
+                           then Int.toString (Real.round n)
+                           else Real.toString n)))
+            
     fun serialise json =
         case json of
             OBJECT pp => "{" ^ String.concatWith
@@ -924,8 +986,7 @@ structure Json :> JSON = struct
                                                 serialise value) pp) ^
                          "}"
           | ARRAY arr => "[" ^ String.concatWith "," (map serialise arr) ^ "]"
-          | NUMBER n => implode (map (fn #"~" => #"-" | c => c) 
-                                     (explode (Real.toString n)))
+          | NUMBER n => serialiseNumber n
           | STRING s => "\"" ^ stringEscape s ^ "\""
           | BOOL b => Bool.toString b
           | NULL => "null"
@@ -1200,6 +1261,10 @@ structure HgControl :> VCS_CONTROL = struct
                         
     val hg_args = [ "--config", "ui.interactive=true",
                     "--config", "ui.merge=:merge" ]
+
+    val hg_extra_clone_pull_args = if FileBits.insecure ()
+				   then [ "--insecure" ]
+				   else []
                         
     fun hg_command context libname args =
         FileBits.command context libname (hg_program :: hg_args @ args)
@@ -1220,7 +1285,7 @@ structure HgControl :> VCS_CONTROL = struct
     fun remote_for context (libname, source) =
         Provider.remote_url context HG source libname
 
-    fun current_state context libname : vcsstate result =
+    fun current_state (context : context) libname : vcsstate result =
         let fun is_branch text = text <> "" andalso #"(" = hd (explode text)
             and extract_branch b =
                 if is_branch b     (* need to remove enclosing parens *)
@@ -1237,8 +1302,19 @@ structure HgControl :> VCS_CONTROL = struct
                      modified = is_modified id,
                      branch = extract_branch branch,
                      tags = split_tags tags }
+                   
+            val status =
+                case StatusCache.lookup libname (#cache context) of
+                    SOME status => OK status
+                  | NONE =>
+                    case hg_command_output context libname ["id"] of
+                        ERROR e => ERROR e
+                      | OK status =>
+                        (StatusCache.add { libname = libname, status = status }
+                                         (#cache context);
+                         OK status)
         in        
-            case hg_command_output context libname ["id"] of
+            case status of
                 ERROR e => ERROR e
               | OK out =>
                 case String.tokens (fn x => x = #" ") out of
@@ -1281,13 +1357,26 @@ structure HgControl :> VCS_CONTROL = struct
             ERROR e => OK false (* desired branch does not exist *)
           | OK newest_in_repo => is_at context (libname, newest_in_repo)
 
+    fun is_modified_locally context libname =
+        case current_state context libname of
+            ERROR e => ERROR e
+          | OK { modified, ... } => OK modified
+
+    (* Actions below this line may in theory modify the repo, and
+       so must invalidate the status cache *)
+
+    fun invalidate (context : context) libname : unit =
+        StatusCache.drop libname (#cache context)        
+            
     fun pull context (libname, source) =
-        let val url = remote_for context (libname, source)
+        let val () = invalidate context libname
+            val url = remote_for context (libname, source)
         in
             hg_command context libname
-                       (if FileBits.verbose ()
-                        then ["pull", url]
-                        else ["pull", "-q", url])
+                       ((if FileBits.verbose ()
+                         then ["pull", url]
+                         else ["pull", "-q", url])
+			@ hg_extra_clone_pull_args)
         end
 
     fun is_newest context (libname, source, branch) =
@@ -1295,17 +1384,15 @@ structure HgControl :> VCS_CONTROL = struct
             ERROR e => ERROR e
           | OK false => OK false
           | OK true =>
+            (* only this branch needs to invalidate the status cache,
+               and pull does that *)
             case pull context (libname, source) of
                 ERROR e => ERROR e
               | _ => is_newest_locally context (libname, branch)
-
-    fun is_modified_locally context libname =
-        case current_state context libname of
-            ERROR e => ERROR e
-          | OK { modified, ... } => OK modified
                 
     fun checkout context (libname, source, branch) =
-        let val url = remote_for context (libname, source)
+        let val () = invalidate context libname
+            val url = remote_for context (libname, source)
         in
             (* make the lib dir rather than just the ext dir, since
                the lib dir might be nested and hg will happily check
@@ -1313,25 +1400,31 @@ structure HgControl :> VCS_CONTROL = struct
             case FileBits.mkpath (FileBits.libpath context libname) of
                 ERROR e => ERROR e
               | _ => hg_command context ""
-                                ["clone", "-u", branch_name branch,
-                                 url, libname]
+                                (["clone", "-u", branch_name branch,
+                                  url, libname] @ hg_extra_clone_pull_args)
         end
                                                     
     fun update context (libname, source, branch) =
-        let val pull_result = pull context (libname, source)
+        let (* pull invalidates the cache, as we must here *)
+            val pull_result = pull context (libname, source)
         in
             case hg_command context libname ["update", branch_name branch] of
                 ERROR e => ERROR e
               | _ =>
                 case pull_result of
                     ERROR e => ERROR e
-                  | _ => OK ()
+                  | _ =>
+                    let val () = StatusCache.drop libname (#cache context)
+                    in
+                        OK ()
+                    end
         end
 
     fun update_to context (libname, _, "") =
         ERROR "Non-empty id (tag or revision id) required for update_to"
       | update_to context (libname, source, id) = 
-        let val pull_result = pull context (libname, source)
+        let (* pull invalidates the cache, as we must here *)
+            val pull_result = pull context (libname, source)
         in
             case hg_command context libname ["update", "-r", id] of
                 OK _ => OK ()
@@ -1392,10 +1485,16 @@ structure GitControl :> VCS_CONTROL = struct
                the lib dir might be nested and git will happily check
                out into an existing empty dir anyway *)
             case FileBits.mkpath (FileBits.libpath context libname) of
-                OK () => git_command context ""
-                                     ["clone", "--origin", our_remote,
-                                      "--branch", branch_name branch,
-                                      url, libname]
+                OK () =>
+                git_command context ""
+                            (case branch of
+                                 DEFAULT_BRANCH =>
+                                 ["clone", "--origin", our_remote,
+                                  url, libname]
+                               | _ => 
+                                 ["clone", "--origin", our_remote,
+                                  "--branch", branch_name branch,
+                                  url, libname])
               | ERROR e => ERROR e
         end
 
@@ -1499,7 +1598,9 @@ structure GitControl :> VCS_CONTROL = struct
                   | _ => is_newest_locally context (libname, branch)
 
     fun is_modified_locally context libname =
-        case git_command_output context libname ["status", "--porcelain"] of
+        case git_command_output context libname
+                                ["status", "--porcelain",
+                                 "--untracked-files=no" ] of
             ERROR e => ERROR e
           | OK "" => OK false
           | OK _ => OK true
@@ -1547,24 +1648,38 @@ structure GitControl :> VCS_CONTROL = struct
 end
 
 (* SubXml - A parser for a subset of XML
-   https://bitbucket.org/cannam/sml-subxml
-   Copyright 2018 Chris Cannam. BSD licence.
+   https://hg.sr.ht/~cannam/sml-subxml
+   Copyright 2018-2021 Chris Cannam. BSD licence.
 *)
 
+(** Parser and serialiser for a format resembling XML. This can be
+    used as a minimal parser for small XML configuration or
+    interchange files. The format supported consists of the element,
+    attribute, text, CDATA, and comment syntax from XML, and is always
+    UTF-8 encoded.
+*)
 signature SUBXML = sig
 
+    (** Node type, akin to XML DOM node. *)
     datatype node = ELEMENT of { name : string, children : node list }
                   | ATTRIBUTE of { name : string, value : string }
                   | TEXT of string
                   | CDATA of string
                   | COMMENT of string
 
+    (** Document type, akin to XML DOM. *)
     datatype document = DOCUMENT of { name : string, children : node list }
 
     datatype 'a result = OK of 'a
                        | ERROR of string
 
+    (** Parse a UTF-8 encoded XML-like document and return a document
+        structure, or an error message if the document could not be
+        parsed. *)
     val parse : string -> document result
+
+    (** Serialise a document structure into a UTF-8 encoded XML-like
+        document. *)
     val serialise : document -> string
                                   
 end
@@ -1614,7 +1729,66 @@ structure SubXml :> SUBXML = struct
         fun tokenError pos token =
             error pos ("Unexpected token '" ^ Char.toString token ^ "'")
 
-        val nameEnd = explode " \t\n\r\"'</>!=?"
+        val nameEnd = explode " \t\n\r\"'</>!=?&"
+
+        fun numChar n =
+            let open Word
+                infix 6 orb andb >>
+                fun chars ww = SOME (map (Char.chr o toInt) ww)
+                val c = fromInt n
+            in
+                if c < 0wx80 then
+                    chars [c]
+                else if c < 0wx800 then
+                    chars [0wxc0 orb (c >> 0w6),
+                           0wx80 orb (c andb 0wx3f)]
+                else if c < 0wx10000 then
+                    chars [0wxe0 orb (c >> 0w12),
+                           0wx80 orb ((c >> 0w6) andb 0wx3f),
+                           0wx80 orb (c andb 0wx3f)]
+                else if c < 0wx10ffff then
+	            chars [0wxf0 orb (c >> 0w18),
+	                   0wx80 orb ((c >> 0w12) andb 0wx3f),
+                           0wx80 orb ((c >> 0w6) andb 0wx3f),
+                           0wx80 orb (c andb 0wx3f)]
+                else NONE
+            end
+
+        fun hexChar h =
+            Option.mapPartial numChar
+                              (StringCvt.scanString (Int.scan StringCvt.HEX) h)
+
+        fun decChar d =
+            Option.mapPartial numChar
+                              (Int.fromString d)
+                
+        fun entity pos cc =
+            let fun entity' decoder pos text [] =
+                    error pos "Document ends during character entity"
+                  | entity' decoder pos text (c :: rest) =
+                    if c <> #";"
+                    then entity' decoder (pos+1) (c :: text) rest
+                    else case decoder (implode (rev text)) of
+                             NONE => error pos "Invalid character entity"
+                           | SOME chars => OK (chars, rest, pos+1)
+            in
+                case cc of
+                    #"q" :: #"u" :: #"o" :: #"t" :: #";" :: rest =>
+                    OK ([#"\""], rest, pos+5)
+                  | #"a" :: #"m" :: #"p" :: #";" :: rest =>
+                    OK ([#"&"], rest, pos+4)
+                  | #"a" :: #"p" :: #"o" :: #"s" :: #";" :: rest =>
+                    OK ([#"'"], rest, pos+5)
+                  | #"l" :: #"t" :: #";" :: rest =>
+                    OK ([#"<"], rest, pos+3)
+                  | #"g" :: #"t" :: #";" :: rest => 
+                    OK ([#">"], rest, pos+3)
+                  | #"#" :: #"x" :: rest =>
+                    entity' hexChar (pos+2) [] rest
+                  | #"#" :: rest =>
+                    entity' decChar (pos+1) [] rest
+                  | _ => error pos "Invalid entity"
+            end
                               
         fun quoted quote pos acc cc =
             let fun quoted' pos text [] =
@@ -1622,6 +1796,11 @@ structure SubXml :> SUBXML = struct
                   | quoted' pos text (x::xs) =
                     if x = quote
                     then OK (rev text, xs, pos+1)
+                    else if x = #"&"
+                    then case entity (pos+1) xs of
+                             ERROR e => ERROR e
+                           | OK (chars, rest, newpos) =>
+                             quoted' newpos (rev chars @ text) rest
                     else quoted' (pos+1) (x::text) xs
             in
                 case quoted' pos [] cc of
@@ -1723,6 +1902,10 @@ structure SubXml :> SUBXML = struct
                         #"<" => if text = []
                                 then left (pos+1) acc xs
                                 else left (pos+1) (textOf text :: acc) xs
+                      | #"&" => (case entity (pos+1) xs of
+                                     ERROR e => ERROR e
+                                   | OK (chars, rest, newpos) =>
+                                     outside' newpos (rev chars @ text) acc rest)
                       | x => outside' (pos+1) (x::text) acc xs
             in
                 outside' pos [] acc cc
@@ -1851,17 +2034,25 @@ structure SubXml :> SUBXML = struct
                 (map node (List.filter
                                (fn ATTRIBUTE _ => false | _ => true)
                                nodes))
+
+        and encode text =
+            String.translate (fn #"\"" => "&quot;"
+                             | #"&" => "&amp;"
+                             | #"'" => "&apos;"
+                             | #"<" => "&lt;"
+                             | #">" => "&gt;"
+                             | c => str c) text
                 
         and node n =
             case n of
                 TEXT string =>
-                string
+                encode string
               | CDATA string =>
                 "<![CDATA[" ^ string ^ "]]>"
               | COMMENT string =>
-                "<!-- " ^ string ^ "-->"
+                "<!--" ^ string ^ "-->"
               | ATTRIBUTE { name, value } =>
-                name ^ "=" ^ "\"" ^ value ^ "\"" (*!!!*)
+                name ^ "=" ^ "\"" ^ encode value ^ "\""
               | ELEMENT { name, children } =>
                 "<" ^ name ^
                 (case (attributes children) of
@@ -2006,7 +2197,7 @@ structure SvnControl :> VCS_CONTROL = struct
         OK true (* no local history *)
 
     fun is_modified_locally context libname =
-        case svn_command_output context libname ["status"] of
+        case svn_command_output context libname ["status", "-q"] of
             ERROR e => ERROR e
           | OK "" => OK false
           | OK _ => OK true
@@ -2066,10 +2257,10 @@ structure AnyLibControl :> LIB_CONTROL = struct
     fun status context (spec as { vcs, ... } : libspec) =
         (fn HG => H.status | GIT => G.status | SVN => S.status) vcs context spec
 
-    fun update context (spec as { vcs, ... } : libspec) =
+    fun update context (spec as { libname, vcs, ... } : libspec) =
         (fn HG => H.update | GIT => G.update | SVN => S.update) vcs context spec
-
-    fun id_of context (spec as { vcs, ... } : libspec) =
+            
+    fun id_of context (spec as { libname, vcs, ... } : libspec) =
         (fn HG => H.id_of | GIT => G.id_of | SVN => S.id_of) vcs context spec
 
     fun is_working context vcs =
@@ -2135,7 +2326,8 @@ end = struct
                 rootpath = dir,
                 extdir = ".",
                 providers = [],
-                accounts = []
+                accounts = [],
+                cache = StatusCache.empty
             }
             val vcs_maybe = 
                 case [HgControl.exists context ".",
@@ -2194,7 +2386,8 @@ end = struct
                 rootpath = archive_root,
                 extdir = ".",
                 providers = [],
-                accounts = []
+                accounts = [],
+                cache = StatusCache.empty
             }
             val synthetic_library = {
                 libname = target_name,
@@ -2221,7 +2414,8 @@ end = struct
                 rootpath = archive_path archive_root target_name,
                 extdir = #extdir context,
                 providers = #providers context,
-                accounts = #accounts context
+                accounts = #accounts context,
+                cache = StatusCache.empty
             }
         in
             foldl (fn (lib, acc) =>
@@ -2262,7 +2456,8 @@ end = struct
                 rootpath = archive_root,
                 extdir = ".",
                 providers = [],
-                accounts = []
+                accounts = [],
+                cache = StatusCache.empty
             } "" ([
                      "tar",
                      case packer of
@@ -2424,23 +2619,54 @@ fun load_project (userconfig : userconfig) rootpath pintype : project =
             rootpath = rootpath,
             extdir = extdir,
             providers = providers,
-            accounts = #accounts userconfig
+            accounts = #accounts userconfig,
+            cache = StatusCache.empty
           },
           libs = map (load_libspec spec_json lock_json) libnames
         }
     end
 
-fun save_lock_file rootpath locks =
+fun make_lock_properties locks = 
+    map (fn { libname, id_or_tag } =>
+            (libname, Json.OBJECT [ ("pin", Json.STRING id_or_tag) ]))
+        locks
+
+fun make_lock_json_from_properties properties =
+    Json.OBJECT [ (libobjname, Json.OBJECT properties) ]
+
+fun make_lock_json locks =
+    make_lock_json_from_properties (make_lock_properties locks)
+        
+fun save_lock_file_afresh rootpath locks =
     let val lock_file = FileBits.project_lock_path rootpath
-        open Json
+        val lock_json = make_lock_json locks
+    in
+        JsonBits.save_json_to lock_file lock_json
+    end
+
+fun save_lock_file_updating rootpath locks =
+    let val lock_file = FileBits.project_lock_path rootpath
+        val prior_lock_json = JsonBits.load_json_from lock_file
+                              handle IO.Io _ => Json.OBJECT []
+        val new_lock_properties = make_lock_properties locks
+        val updated_prior_properties =
+            case prior_lock_json of
+                Json.OBJECT [ (_, Json.OBJECT properties) ] =>
+                map (fn (entry as (lib, _)) =>
+                        case List.find (fn (lib', _) => lib = lib')
+                                       new_lock_properties of
+                            NONE => entry
+                          | SOME updated => updated)
+                    properties
+              | _ => []
+        val filtered_new_properties =
+            List.filter (fn (lib, _) =>
+                            not (List.exists (fn (lib', _) => lib = lib')
+                                             updated_prior_properties))
+                        new_lock_properties
         val lock_json =
-            OBJECT [
-                (libobjname,
-                 OBJECT (map (fn { libname, id_or_tag } =>
-                                 (libname,
-                                  OBJECT [ ("pin", STRING id_or_tag) ]))
-                             locks))
-            ]
+            make_lock_json_from_properties
+                (updated_prior_properties @ filtered_new_properties)
     in
         JsonBits.save_json_to lock_file lock_json
     end
@@ -2586,12 +2812,14 @@ fun review_project ({ context, libs } : project) =
                                    print_status_header (print_status true)
                                    context libs)
 
-fun lock_project ({ context, libs } : project) =
+fun lock_project (update_only : libspec list option)
+                 ({ context, libs } : project) =
     let val _ = if FileBits.verbose ()
                 then print ("Scanning IDs for lock file...\n")
                 else ()
+        val to_update = Option.getOpt (update_only, libs)
         val outcomes = map (fn lib => (lib, AnyLibControl.id_of context lib))
-                           libs
+                           to_update
         val locks =
             List.concat
                 (map (fn (lib : libspec, result) =>
@@ -2604,7 +2832,9 @@ fun lock_project ({ context, libs } : project) =
         val _ = print clear_line
     in
         if OS.Process.isSuccess return_code
-        then save_lock_file (#rootpath context) locks
+        then (if Option.isSome update_only
+              then save_lock_file_updating
+              else save_lock_file_afresh) (#rootpath context) locks
         else ();
         return_code
     end
@@ -2614,9 +2844,11 @@ fun update_project (project as { context, libs }) =
                            (AnyLibControl.update context)
                            print_outcome_header print_update_outcome
                            context libs
-        val _ = if List.exists (fn (_, OK _) => true | _ => false) outcomes
-                then lock_project project
-                else OS.Process.success
+        val successes = List.filter (fn (_, OK _) => true | _ => false)
+                                    outcomes
+        val _ = if null successes
+                then OS.Process.success (* ignored, not the return value *)
+                else lock_project (SOME (map #1 successes)) project
         val return_code = return_code_for outcomes
     in
         if OS.Process.isSuccess return_code
@@ -2650,7 +2882,7 @@ fun with_local_project pintype f =
 fun review () = with_local_project USE_LOCKFILE review_project
 fun status () = with_local_project USE_LOCKFILE status_of_project
 fun update () = with_local_project NO_LOCKFILE update_project
-fun lock () = with_local_project NO_LOCKFILE lock_project
+fun lock () = with_local_project NO_LOCKFILE (lock_project NONE)
 fun install () = with_local_project USE_LOCKFILE update_project
 
 fun version () =
@@ -2661,7 +2893,7 @@ fun usage () =
     (print "\nRepoint ";
      version ();
      print ("\n  A simple manager for third-party source code dependencies.\n"
-            ^ "  http://all-day-breakfast.com/repoint/\n\n"
+            ^ "  https://all-day-breakfast.com/repoint/\n\n"
             ^ "Usage:\n\n"
             ^ "  repoint <command> [<options>]\n\n"
             ^ "where <command> is one of:\n\n"

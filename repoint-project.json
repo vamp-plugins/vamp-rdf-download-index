@@ -35,15 +35,18 @@
             "pin": "2.9.1"
         },
         "public": {
-            "vcs": "hg",
-            "service": "soundsoftware",
-            "repository": "vamp-website",
+            "vcs": "git",
+            "service": "github",
+            "owner": "sonic-visualiser",
+            "repository": "vamp-static-site",
             "branch": "website"
         },
         "rdf": {
-            "vcs": "hg",
-            "service": "soundsoftware",
-            "repository": "vamp-known-plugins-rdf"
+            "vcs": "git",
+            "service": "github",
+            "owner": "sonic-visualiser",
+            "repository": "vamp-known-plugins-rdf",
+            "branch": "default"
         },
         "piper": {
             "vcs": "git",
