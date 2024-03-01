@@ -37,14 +37,14 @@
         "public": {
             "vcs": "git",
             "service": "github",
-            "owner": "sonic-visualiser",
+            "owner": "vamp-plugins",
             "repository": "vamp-static-site",
             "branch": "website"
         },
         "rdf": {
             "vcs": "git",
             "service": "github",
-            "owner": "sonic-visualiser",
+            "owner": "vamp-plugins",
             "repository": "vamp-known-plugins-rdf",
             "branch": "default"
         },
