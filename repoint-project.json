@@ -13,7 +13,8 @@
         "yeti": {
             "vcs": "git",
             "service": "github",
-            "owner": "mth"
+            "owner": "mth",
+            "pin": "de5e56ceda4678f4ad2678bbd6afec7ac3afdfa2"
         },
         "yertle": {
             "vcs": "hg",
