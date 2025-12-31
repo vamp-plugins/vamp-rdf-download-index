@@ -22,12 +22,14 @@
             "owner": "cannam"
         },
         "jvamp": {
-            "vcs": "hg",
-            "service": "soundsoftware"
+            "vcs": "git",
+            "service": "github",
+            "owner": "vamp-plugins"
         },
         "may": {
-            "vcs": "hg",
-            "service": "soundsoftware"
+            "vcs": "git",
+            "service": "github",
+            "owner": "cannam"
         },
         "spark": {
             "vcs": "git",
